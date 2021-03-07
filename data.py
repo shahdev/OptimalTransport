@@ -68,9 +68,9 @@ def get_dataloader(args, unit_batch = False, no_randomness=False):
             train_loader = torch.utils.data.DataLoader(
                 torchvision.datasets.CIFAR10('./data/', train=True, download=args.to_download,
                                            transform=torchvision.transforms.Compose([
-                                               torchvision.transforms.ToTensor(),
                                                torchvision.transforms.RandomHorizontalFlip(),
                                                torchvision.transforms.RandomAffine(0, translate=(0.1, 0.1)),
+                                               torchvision.transforms.ToTensor(),
                                            ])),
                 batch_size=bsz[0], shuffle=enable_shuffle
             )
