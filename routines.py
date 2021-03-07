@@ -17,6 +17,7 @@ def get_trained_model(args, id, random_seed, train_loader, test_loader):
 
     optimizer = optim.SGD(network.parameters(), lr=args.learning_rate,
                           momentum=args.momentum)
+    cifar_criterion = torch.nn.CrossEntropyLoss()
     if args.gpu_id!=-1:
         network = network.cuda(args.gpu_id)
     log_dict = {}
@@ -27,7 +28,7 @@ def get_trained_model(args, id, random_seed, train_loader, test_loader):
     # print(list(network.parameters()))
     acc = test(args, network, test_loader, log_dict)
     for epoch in range(1, args.n_epochs + 1):
-        train(args, network, optimizer, train_loader, log_dict, epoch, model_id=str(id))
+        train(args, network, optimizer, cifar_criterion, train_loader, log_dict, epoch, model_id=str(id))
         acc = test(args, network, test_loader, log_dict)
     return network, acc
 
@@ -180,7 +181,7 @@ def get_pretrained_model(args, path, data_separated=False, idx=-1):
     else:
         return model, state['test_accuracy'], state['local_test_accuracy']
 
-def train(args, network, optimizer, train_loader, log_dict, epoch, model_id=-1):
+def train(args, network, optimizer, cifar_criterion, train_loader, log_dict, epoch, model_id=-1):
     network.train()
     for batch_idx, (data, target) in enumerate(train_loader):
         if args.gpu_id!=-1:
@@ -188,7 +189,7 @@ def train(args, network, optimizer, train_loader, log_dict, epoch, model_id=-1):
             target = target.cuda(args.gpu_id)
         optimizer.zero_grad()
         output = network(data)
-        loss = F.nll_loss(output, target)
+        loss = cifar_criterion(output, target).item()        
         loss.backward()
         optimizer.step()
         if batch_idx % args.log_interval == 0:
