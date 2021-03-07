@@ -12,6 +12,7 @@ import train as cifar_train
 PATH_TO_VGG = "./cifar/models/"
 sys.path.append(PATH_TO_VGG)
 import vgg
+import nin
 import partition
 
 def get_timestamp_other():
@@ -143,6 +144,7 @@ def _get_config(args):
     import hyperparameters.resnet18_nobias_nobn_cifar10_baseline as cifar10_resnet18_nobias_nobn_hyperparams
     import hyperparameters.mlpnet_cifar10_baseline as mlpnet_hyperparams
 
+    import hyperparameters.vgg9_cifar10_baseline as cifar10_vgg9_hyperparams  # vgg9_hyperparams 
     config = None
     second_config = None
 
@@ -161,6 +163,8 @@ def _get_config(args):
             config = cifar10_resnet18_nobias_hyperparams.config
         elif args.model_name == 'resnet18_nobias_nobn':
             config = cifar10_resnet18_nobias_nobn_hyperparams.config
+        elif args.model_name == 'vgg9':
+            config = cifar10_vgg9_hyperparams.config
         else:
             raise NotImplementedError
 

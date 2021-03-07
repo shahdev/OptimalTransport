@@ -264,6 +264,7 @@ def get_model(config, device=-1, relu_inplace=True):
         'resnet18':  lambda: models.ResNet18(num_classes=num_classes),
         'resnet18_nobias': lambda: models.ResNet18(num_classes=num_classes, linear_bias=False),
         'resnet18_nobias_nobn': lambda: models.ResNet18(num_classes=num_classes, use_batchnorm=False, linear_bias=False),
+        'vgg9':     lambda: models.VGG9(),
     }[config['model']]()
 
     if device != -1:

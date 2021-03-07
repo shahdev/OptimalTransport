@@ -30,7 +30,6 @@ class NIN(nn.Module):
                 nn.Conv2d(192,  10, kernel_size=1, stride=1, padding=0),
                 nn.ReLU(inplace=True),
                 nn.AvgPool2d(kernel_size=8, stride=1, padding=0),
-
                 )
 
     def forward(self, x):

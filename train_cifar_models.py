@@ -9,6 +9,7 @@ import hyperparameters.vgg11_doub_cifar10_baseline as cifar10_vgg_doub_hyperpara
 import hyperparameters.vgg11_quad_cifar10_baseline as cifar10_vgg_quad_hyperparams
 import hyperparameters.resnet18_nobias_cifar10_baseline as cifar10_resnet18_nobias_hyperparams
 import hyperparameters.resnet18_nobias_nobn_cifar10_baseline as cifar10_resnet18_nobias_nobn_hyperparams
+import hyperparameters.vgg9_cifar10_baseline as cifar10_vgg9_hyperparams
 import copy
 
 # num_models = 10
