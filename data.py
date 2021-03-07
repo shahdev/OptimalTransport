@@ -69,10 +69,8 @@ def get_dataloader(args, unit_batch = False, no_randomness=False):
                 torchvision.datasets.CIFAR10('./data/', train=True, download=args.to_download,
                                            transform=torchvision.transforms.Compose([
                                                torchvision.transforms.ToTensor(),
-                                               torchvision.transforms.Normalize(
-                                                   # Note this normalization is not same as in MNIST
-                                                   # (mean_ch1, mean_ch2, mean_ch3), (std1, std2, std3)
-                                                   (0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+                                               torchvision.transforms.RandomHorizontalFlip(),
+                                               torchvision.transforms.RandomAffine(0, translate=(0.1, 0.1)),
                                            ])),
                 batch_size=bsz[0], shuffle=enable_shuffle
             )
@@ -81,9 +79,6 @@ def get_dataloader(args, unit_batch = False, no_randomness=False):
                 torchvision.datasets.CIFAR10('./data/', train=False, download=args.to_download,
                                            transform=torchvision.transforms.Compose([
                                                torchvision.transforms.ToTensor(),
-                                               torchvision.transforms.Normalize(
-                                                   # (mean_ch1, mean_ch2, mean_ch3), (std1, std2, std3)
-                                                   (0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
                                            ])),
                 batch_size=bsz[1], shuffle=enable_shuffle
             )
