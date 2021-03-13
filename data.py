@@ -4,6 +4,7 @@ import sys
 PATH_TO_CIFAR = "./cifar/"
 sys.path.append(PATH_TO_CIFAR)
 import train as cifar_train
+import numpy as np
 
 def get_inp_tar(dataset):
     return dataset.data.view(dataset.data.shape[0], -1).float(), dataset.targets
@@ -23,7 +24,7 @@ def get_mnist_dataset(root, is_train, to_download, return_tensor=False):
         return get_inp_tar(mnist)
 
 
-def get_dataloader(args, unit_batch = False, no_randomness=False, num_clients=1):
+def get_dataloader(args, unit_batch = False, no_randomness=False):
     if unit_batch:
         bsz = (1, 1)
     else:
@@ -65,8 +66,8 @@ def get_dataloader(args, unit_batch = False, no_randomness=False, num_clients=1)
             train_loader, test_loader = cifar_train.get_dataset(args.config)
         else:
             dataloaders = []
-            for i in range(num_clients):
-                data_train = np.load('%s/data_party%d.npz' % (dataset_path, i))
+            for i in range(args.num_models):
+                data_train = np.load('%s/data_party%d.npz' % (args.dataset_path, i))
                 x_train = (data_train['x_train']*255).astype('unit8')
                 y_train = data_train['y_train']
                 local_dataset = torchvision.datasets.CIFAR10('./data/', train=True, download=args.to_download,
