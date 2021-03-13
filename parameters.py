@@ -93,6 +93,7 @@ def get_parser():
     parser.add_argument('--config-file', type=str, default=None, help='config file path')
     parser.add_argument('--config-dir', type=str, default="./configurations", help='config dir')
     parser.add_argument('--save-dir', type=str, help='save dir')
+    parser.add_argument('--dataset-path', type=str, help='dataset path')
     # for simplenet
     parser.add_argument('--num-hidden-nodes', default=400, type=int, help='simplenet: number of hidden nodes in the only hidden layer')
     # for mlpnet

@@ -23,7 +23,7 @@ def get_mnist_dataset(root, is_train, to_download, return_tensor=False):
         return get_inp_tar(mnist)
 
 
-def get_dataloader(args, unit_batch = False, no_randomness=False):
+def get_dataloader(args, unit_batch = False, no_randomness=False, num_clients=1):
     if unit_batch:
         bsz = (1, 1)
     else:
@@ -64,17 +64,22 @@ def get_dataloader(args, unit_batch = False, no_randomness=False):
         if args.cifar_style_data:
             train_loader, test_loader = cifar_train.get_dataset(args.config)
         else:
-
-            train_loader = torch.utils.data.DataLoader(
-                torchvision.datasets.CIFAR10('./data/', train=True, download=args.to_download,
+            dataloaders = []
+            for i in range(num_clients):
+                data_train = np.load('%s/data_party%d.npz' % (dataset_path, i))
+                x_train = (data_train['x_train']*255).astype('unit8')
+                y_train = data_train['y_train']
+                local_dataset = torchvision.datasets.CIFAR10('./data/', train=True, download=args.to_download,
                                            transform=torchvision.transforms.Compose([
                                                torchvision.transforms.RandomHorizontalFlip(),
                                                torchvision.transforms.RandomAffine(0, translate=(0.1, 0.1)),
                                                torchvision.transforms.ToTensor(),
-                                           ])),
-                batch_size=bsz[0], shuffle=enable_shuffle
-            )
-            import pdb; pdb.set_trace()
+                                           ]))
+                local_dataset.data = x_train
+                local_dataset.targets = y_train
+
+                local_train_loader = torch.utils.data.DataLoader(local_dataset, batch_size=bsz[0], shuffle=enable_shuffle)
+                dataloaders.append(local_train_loader)
             test_loader = torch.utils.data.DataLoader(
                 torchvision.datasets.CIFAR10('./data/', train=False, download=args.to_download,
                                            transform=torchvision.transforms.Compose([
@@ -83,4 +88,5 @@ def get_dataloader(args, unit_batch = False, no_randomness=False):
                 batch_size=bsz[1], shuffle=enable_shuffle
             )
 
-        return train_loader, test_loader
+
+        return dataloaders, test_loader
