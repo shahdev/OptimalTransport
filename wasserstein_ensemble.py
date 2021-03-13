@@ -884,12 +884,12 @@ def get_network_from_param_list(args, param_list, test_loader):
 
     return acc, new_network
 
-def geometric_ensembling_modularized(args, networks, train_loader, test_loader, activations=None):
+def geometric_ensembling_modularized(args, networks, train_loader_array, test_loader, activations=None):
     
     if args.geom_ensemble_type == 'wts':
         avg_aligned_layers = get_wassersteinized_layers_modularized(args, networks, activations, test_loader=test_loader)
     elif args.geom_ensemble_type == 'acts':
-        avg_aligned_layers = get_acts_wassersteinized_layers_modularized(args, networks, activations, train_loader=train_loader, test_loader=test_loader)
+        avg_aligned_layers = get_acts_wassersteinized_layers_modularized(args, networks, activations, train_loader=train_loader_array, test_loader=test_loader)
         
     return get_network_from_param_list(args, avg_aligned_layers, test_loader)
 

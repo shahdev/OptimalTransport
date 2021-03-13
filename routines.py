@@ -323,7 +323,7 @@ def save_final_model(args, idx, model, test_accuracy):
     }, os.path.join(path, '{}.checkpoint'.format(args.ckpt_type))
     )
 
-def retrain_models(args, old_networks, train_loader, test_loader, config, tensorboard_obj=None, initial_acc=None, nicks=None):
+def retrain_models(args, old_networks, train_loader_array, test_loader, config, tensorboard_obj=None, initial_acc=None, nicks=None):
     accuracies = []
     retrained_networks = []
     # nicks = []
@@ -347,11 +347,11 @@ def retrain_models(args, old_networks, train_loader, test_loader, config, tensor
             start_acc = -1
         if args.dataset.lower()[0:7] == 'cifar10':
 
-            if args.reinit_trainloaders:
-                print('reiniting trainloader')
-                retrain_loader, _ = cifar_train.get_dataset(config, no_randomness=args.no_random_trainloaders)
-            else:
-                retrain_loader = train_loader
+            # if args.reinit_trainloaders:
+            #     print('reiniting trainloader')
+            #     retrain_loader, _ = cifar_train.get_dataset(config, no_randomness=args.no_random_trainloaders)
+            # else:
+            retrain_loader = train_loader_array[i]
 
             output_root_dir = "{}/{}_models_ensembled/".format(args.baseroot, (args.dataset).lower())
             output_root_dir = os.path.join(output_root_dir, args.exp_name, nick)
@@ -361,11 +361,11 @@ def retrain_models(args, old_networks, train_loader, test_loader, config, tensor
             
         elif args.dataset.lower() == 'mnist':
 
-            if args.reinit_trainloaders:
-                print('reiniting trainloader')
-                retrain_loader, _ = get_dataloader(args, no_randomness=args.no_random_trainloaders)
-            else:
-                retrain_loader = train_loader
+            # if args.reinit_trainloaders:
+            #     print('reiniting trainloader')
+            #     retrain_loader, _ = get_dataloader(args, no_randomness=args.no_random_trainloaders)
+            # else:
+            retrain_loader = train_loader_array[i]
                 
             start_acc = initial_acc[i]
             retrained_network, acc = get_retrained_model(args, retrain_loader, test_loader, old_network=old_networks[i], tensorboard_obj=tensorboard_obj, nick=nick, start_acc=start_acc, retrain_seed=args.retrain_seed)
