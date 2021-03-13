@@ -69,7 +69,7 @@ def get_dataloader(args, unit_batch = False, no_randomness=False):
             for i in range(args.num_models):
                 data_train = np.load('%s/data_party%d.npz' % (args.dataset_path, i))
                 x_train = (data_train['x_train']*255).astype('uint8')
-                y_train = data_train['y_train']
+                y_train = (data_train['y_train']).astype('int64')
                 local_dataset = torchvision.datasets.CIFAR10('./data/', train=True, download=args.to_download,
                                            transform=torchvision.transforms.Compose([
                                                torchvision.transforms.RandomHorizontalFlip(),
