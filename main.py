@@ -83,11 +83,12 @@ if __name__ == '__main__':
                         args.gpu_id, relu_inplace=not args.prelu_acts # if you want pre-relu acts, set relu_inplace to False
                 )
             else:
-                model, accuracy = routines.get_pretrained_model(
+                model = routines.get_pretrained_model(
                         args, os.path.join(ensemble_dir, 'model_{}/{}.checkpoint'.format(idx, args.ckpt_type)), idx = idx
                 )
 
             models.append(model)
+            accuracy = 86
             accuracies.append(accuracy)
         print("Done loading all the models")
 
@@ -106,7 +107,6 @@ if __name__ == '__main__':
 
     else:
         # get dataloaders
-        import pdb; pdb.set_trace()
         print("------- Obtain dataloaders -------")
         train_loader, test_loader = get_dataloader(args)
         retrain_loader, _ = get_dataloader(args, no_randomness=args.no_random_trainloaders)

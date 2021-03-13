@@ -14,9 +14,8 @@ def get_trained_model(args, id, random_seed, train_loader, test_loader):
     torch.backends.cudnn.enabled = False
     torch.manual_seed(random_seed)
     network = get_model_from_name(args, idx=id)
-
     optimizer = optim.SGD(network.parameters(), lr=args.learning_rate,
-                          momentum=args.momentum)
+                          momentum=args.momentum, weight_decay=5e-4)
     cifar_criterion = torch.nn.CrossEntropyLoss()
     if args.gpu_id!=-1:
         network = network.cuda(args.gpu_id)
@@ -30,6 +29,8 @@ def get_trained_model(args, id, random_seed, train_loader, test_loader):
     for epoch in range(1, args.n_epochs + 1):
         train(args, network, optimizer, cifar_criterion, train_loader, log_dict, epoch, model_id=str(id))
         acc = test(args, network, test_loader, log_dict)
+        torch.save(network.state_dict(), '{}/model_{}_{}_{}.pth'.format(args.save_dir, args.model_name, str(id), epoch))
+        torch.save(optimizer.state_dict(), '{}/optimizer_{}_{}_{}.pth'.format(args.save_dir, args.model_name, str(id), epoch))
     return network, acc
 
 def check_freezed_params(model, frozen):
@@ -155,31 +156,31 @@ def get_pretrained_model(args, path, data_separated=False, idx=-1):
             ),
         )
 
+    model_state_dict = state #['model_state_dict']
+   
+    #if 'test_accuracy' not in state:
+    #   state['test_accuracy'] = -1
 
-    model_state_dict = state['model_state_dict']
+    #if 'epoch' not in state:
+    #    state['epoch'] = -1
 
-    if 'test_accuracy' not in state:
-        state['test_accuracy'] = -1
-
-    if 'epoch' not in state:
-        state['epoch'] = -1
-
-    if not data_separated:
-        print("Loading model at path {} which had accuracy {} and at epoch {}".format(path, state['test_accuracy'],
-                                                                                  state['epoch']))
-    else:
-        print("Loading model at path {} which had local accuracy {} and overall accuracy {} for choice {} at epoch {}".format(path,
-            state['local_test_accuracy'], state['test_accuracy'], state['choice'], state['epoch']))
+    #if not data_separated:
+    #    print("Loading model at path {} which had accuracy {} and at epoch {}".format(path, state['test_accuracy'],
+    #                                                                                  state['epoch']))
+    #else:
+    #    print("Loading model at path {} which had local accuracy {} and overall accuracy {} for choice {} at epoch {}".format(path,
+    #        state['local_test_accuracy'], state['test_accuracy'], state['choice'], state['epoch']))
 
     model.load_state_dict(model_state_dict)
 
     if args.gpu_id != -1:
         model = model.cuda(args.gpu_id)
+    return model
 
-    if not data_separated:
-        return model, state['test_accuracy']
-    else:
-        return model, state['test_accuracy'], state['local_test_accuracy']
+    #if not data_separated:
+    #    return model, state['test_accuracy']
+    #else:
+    #    return model, state['test_accuracy'], state['local_test_accuracy']
 
 def train(args, network, optimizer, cifar_criterion, train_loader, log_dict, epoch, model_id=-1):
     network.train()
@@ -189,7 +190,7 @@ def train(args, network, optimizer, cifar_criterion, train_loader, log_dict, epo
             target = target.cuda(args.gpu_id)
         optimizer.zero_grad()
         output = network(data)
-        loss = cifar_criterion(output, target).item()        
+        loss = cifar_criterion(output, target)     
         loss.backward()
         optimizer.step()
         if batch_idx % args.log_interval == 0:
@@ -201,13 +202,6 @@ def train(args, network, optimizer, cifar_criterion, train_loader, log_dict, epo
                 (batch_idx*64) + ((epoch-1)*len(train_loader.dataset)))
 
             assert args.exp_name == "exp_" + args.timestamp
-
-            os.makedirs('{}/{}'.format(args.result_dir, args.exp_name), exist_ok=True)
-            if args.dump_model:
-                assert model_id != -1
-                torch.save(network.state_dict(), '{}/{}/model_{}_{}.pth'.format(args.result_dir, args.exp_name, args.model_name, model_id))
-                torch.save(optimizer.state_dict(), '{}/{}/optimizer_{}_{}.pth'.format(args.result_dir, args.exp_name, args.model_name, model_id))
-
 
 def test(args, network, test_loader, log_dict, debug=False, return_loss=False, is_local=False):
     network.eval()

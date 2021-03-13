@@ -296,7 +296,6 @@ def get_pretrained_model(config, path, device_id=-1, relu_inplace=True):
                 lambda s, _: torch.serialization.default_restore_location(s, 'cpu')
             ),
         )
-
     print("Loading model at path {} which had accuracy {} and at epoch {}".format(path, state['test_accuracy'], state['epoch']))
     model.load_state_dict(state['model_state_dict'])
     return model, state['test_accuracy']*100

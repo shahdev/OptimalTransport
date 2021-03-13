@@ -10,11 +10,11 @@ def get_deprecated_params_vgg_cifar():
     parameters = {
         'n_epochs': 1,
         'enable_dropout': False,
-        'batch_size_train': 128,
-        'batch_size_test': 1000,
+        'batch_size_train': 32,
+        'batch_size_test': 32,
         'learning_rate': 0.01,
-        'momentum': 0.5,
-        'log_interval': 100,
+        'momentum': 0.9,
+        'log_interval': 600,
 
         'to_download':True, # set to True if MNIST/dataset hasn't been downloaded,
         'disable_bias': True, # no bias at all in fc or conv layers,
@@ -75,12 +75,12 @@ def dump_parameters(args):
 def get_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--n-epochs', default=1, type=int, help='number of epochs')
-    parser.add_argument('--batch-size-train', default=64, type=int, help='training batch size')
-    parser.add_argument('--batch-size-test', default=1000, type=int, help='test batch size')
+    parser.add_argument('--batch-size-train', default=32, type=int, help='training batch size')
+    parser.add_argument('--batch-size-test', default=32, type=int, help='test batch size')
     parser.add_argument('--learning-rate', default=0.01, type=float, help='learning rate for SGD (default: 0.01)')
-    parser.add_argument('--momentum', default=0.5, type=float, help='momentum for SGD (default: 0.5)')
+    parser.add_argument('--momentum', default=0.9, type=float, help='momentum for SGD (default: 0.5)')
 
-    parser.add_argument('--log-interval', type=int, default=100, metavar='N',
+    parser.add_argument('--log-interval', type=int, default=500, metavar='N',
                         help='log progress every N batches (when progress bar is disabled)')
 
     parser.add_argument('--to-download', action='store_true', help='download the dataset (typically mnist)')
@@ -92,7 +92,7 @@ def get_parser():
                         help='Type of neural network model (simplenet|smallmlpnet|mlpnet|bigmlpnet|cifarmlpnet|net|vgg11_nobias|vgg11)')
     parser.add_argument('--config-file', type=str, default=None, help='config file path')
     parser.add_argument('--config-dir', type=str, default="./configurations", help='config dir')
-
+    parser.add_argument('--save-dir', type=str, help='save dir')
     # for simplenet
     parser.add_argument('--num-hidden-nodes', default=400, type=int, help='simplenet: number of hidden nodes in the only hidden layer')
     # for mlpnet

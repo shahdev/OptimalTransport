@@ -74,7 +74,7 @@ def get_dataloader(args, unit_batch = False, no_randomness=False):
                                            ])),
                 batch_size=bsz[0], shuffle=enable_shuffle
             )
-
+            import pdb; pdb.set_trace()
             test_loader = torch.utils.data.DataLoader(
                 torchvision.datasets.CIFAR10('./data/', train=False, download=args.to_download,
                                            transform=torchvision.transforms.Compose([

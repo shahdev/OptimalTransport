@@ -73,7 +73,6 @@ def get_wassersteinized_layers_modularized(args, networks, activations=None, eps
     else:
         device = torch.device('cuda:{}'.format(args.gpu_id))
 
-
     num_layers = len(list(zip(networks[0].parameters(), networks[1].parameters())))
     for idx, ((layer0_name, fc_layer0_weight), (layer1_name, fc_layer1_weight)) in \
             enumerate(zip(networks[0].named_parameters(), networks[1].named_parameters())):
