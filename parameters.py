@@ -94,6 +94,9 @@ def get_parser():
     parser.add_argument('--config-dir', type=str, default="./configurations", help='config dir')
     parser.add_argument('--save-dir', type=str, help='save dir')
     parser.add_argument('--dataset-path', type=str, default='', help='dataset path')
+
+    parser.add_argument('--num-comm-rounds', default=1, type=int, help='number of communication rounds for iterative optimal fusion')
+    parser.add_argument('--adversarial-training', default=0, type=int, help='should we enable adversarial training?')
     # for simplenet
     parser.add_argument('--num-hidden-nodes', default=400, type=int, help='simplenet: number of hidden nodes in the only hidden layer')
     # for mlpnet

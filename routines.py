@@ -13,10 +13,11 @@ import copy
 from advertorch.attacks import LinfPGDAttack
 from advertorch.context import ctx_noparamgrad_and_eval
 
-def get_trained_model(args, id, random_seed, train_loader, test_loader):
+def get_trained_model(args, id, random_seed, train_loader, test_loader, network=None):
     torch.backends.cudnn.enabled = False
     torch.manual_seed(random_seed)
-    network = get_model_from_name(args, idx=id)
+    if network is not None:
+        network = get_model_from_name(args, idx=id)
     optimizer = optim.SGD(network.parameters(), lr=args.learning_rate,
                           momentum=args.momentum, weight_decay=5e-4)
 
@@ -296,11 +297,11 @@ def train_data_separated_models(args, local_train_loaders, local_test_loaders, t
     return networks, accuracies, local_accuracies
 
 
-def train_models(args, train_loader_array, test_loader):
+def train_models(args, train_loader_array, test_loader, initial_model=None):
     networks = []
     accuracies = []
     for i in range(args.num_models):
-        network, acc = get_trained_model(args, i, i, train_loader_array[i], test_loader)
+        network, acc = get_trained_model(args, i, i, train_loader_array[i], test_loader, network=initial_model)
         networks.append(network)
         accuracies.append(acc)
         if args.dump_final_models:
