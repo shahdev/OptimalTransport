@@ -9,6 +9,8 @@ PATH_TO_CIFAR = "./cifar/"
 sys.path.append(PATH_TO_CIFAR)
 import train as cifar_train
 import copy
+from advertorch.attacks import LinfPGDAttack
+from advertorch.context import ctx_noparamgrad_and_eval
 
 def get_trained_model(args, id, random_seed, train_loader, test_loader):
     torch.backends.cudnn.enabled = False
@@ -16,6 +18,12 @@ def get_trained_model(args, id, random_seed, train_loader, test_loader):
     network = get_model_from_name(args, idx=id)
     optimizer = optim.SGD(network.parameters(), lr=args.learning_rate,
                           momentum=args.momentum, weight_decay=5e-4)
+
+    adversary = LinfPGDAttack(
+        net, loss_fn=nn.CrossEntropyLoss(reduction="sum"), eps=8.0 / 255.0,
+        nb_iter=10, eps_iter=2.0 / 255.0, rand_init=True, clip_min=0.0,
+        clip_max=1.0, targeted=False)
+
     cifar_criterion = torch.nn.CrossEntropyLoss()
     if args.gpu_id!=-1:
         network = network.cuda(args.gpu_id)
@@ -27,7 +35,7 @@ def get_trained_model(args, id, random_seed, train_loader, test_loader):
     # print(list(network.parameters()))
     acc = test(args, network, test_loader, log_dict)
     for epoch in range(1, args.n_epochs + 1):
-        train(args, network, optimizer, cifar_criterion, train_loader, log_dict, epoch, model_id=str(id))
+        train(args, network, optimizer, cifar_criterion, train_loader, log_dict, epoch, model_id=str(id), adversary = adversary)
         acc = test(args, network, test_loader, log_dict)
         torch.save(network.state_dict(), '{}/model_{}_{}_{}.pth'.format(args.save_dir, args.model_name, str(id), epoch))
         torch.save(optimizer.state_dict(), '{}/optimizer_{}_{}_{}.pth'.format(args.save_dir, args.model_name, str(id), epoch))
@@ -182,13 +190,18 @@ def get_pretrained_model(args, path, data_separated=False, idx=-1):
     #else:
     #    return model, state['test_accuracy'], state['local_test_accuracy']
 
-def train(args, network, optimizer, cifar_criterion, train_loader, log_dict, epoch, model_id=-1):
+def train(args, network, optimizer, cifar_criterion, train_loader, log_dict, epoch, model_id=-1, adversary=None):
     network.train()
     for batch_idx, (data, target) in enumerate(train_loader):
         if args.gpu_id!=-1:
             data = data.cuda(args.gpu_id)
             target = target.cuda(args.gpu_id)
         optimizer.zero_grad()
+
+        # if args.adversarial_training != 0 and args.trigger == 0 and epoch>60:
+        #     with ctx_noparamgrad_and_eval(net):
+        #             if batch_idx%2==0:
+        #                 x = adversary.perturb(x, target)                        
         output = network(data)
         loss = cifar_criterion(output, target)     
         loss.backward()

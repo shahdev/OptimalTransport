@@ -66,18 +66,19 @@ def get_dataloader(args, unit_batch = False, no_randomness=False):
             train_loader, test_loader = cifar_train.get_dataset(args.config)
         else:
             dataloaders = []
-            for i in range(args.num_models):
-                data_train = np.load('%s/data_party%d.npz' % (args.dataset_path, i))
-                x_train = (data_train['x_train']*255).astype('uint8')
-                y_train = (data_train['y_train']).astype('int64')
+            for i in range(args.num_models):                
                 local_dataset = torchvision.datasets.CIFAR10('./data/', train=True, download=args.to_download,
                                            transform=torchvision.transforms.Compose([
                                                torchvision.transforms.RandomHorizontalFlip(),
                                                torchvision.transforms.RandomAffine(0, translate=(0.1, 0.1)),
                                                torchvision.transforms.ToTensor(),
                                            ]))
-                local_dataset.data = x_train
-                local_dataset.targets = y_train
+                if args.dataset_path != '':
+	                data_train = np.load('%s/data_party%d.npz' % (args.dataset_path, i))
+	                x_train = (data_train['x_train']*255).astype('uint8')
+	                y_train = (data_train['y_train']).astype('int64')
+	                local_dataset.data = x_train
+	                local_dataset.targets = y_train
 
                 local_train_loader = torch.utils.data.DataLoader(local_dataset, batch_size=bsz[0], shuffle=enable_shuffle)
                 dataloaders.append(local_train_loader)
