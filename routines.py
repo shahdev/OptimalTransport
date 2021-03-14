@@ -301,7 +301,11 @@ def train_models(args, train_loader_array, test_loader, initial_model=None):
     networks = []
     accuracies = []
     for i in range(args.num_models):
-        network, acc = get_trained_model(args, i, i, train_loader_array[i], test_loader, network=initial_model)
+        if initial_model is not None:
+            network = copy.deepcopy(initial_model)
+            network, acc = get_trained_model(args, i, i, train_loader_array[i], test_loader, network=network)
+        else:
+            network, acc = get_trained_model(args, i, i, train_loader_array[i], test_loader)
         networks.append(network)
         accuracies.append(acc)
         if args.dump_final_models:
