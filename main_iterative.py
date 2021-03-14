@@ -127,7 +127,7 @@ if __name__ == '__main__':
 
             final_results_dic[comm_round] = results_dic
             utils.save_results_params_csv(
-                os.path.join(args.csv_dir, args.save_result_file),
+                args.save_result_file,
                 final_results_dic,
                 args
             )
