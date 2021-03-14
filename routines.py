@@ -2,6 +2,7 @@ import os
 import torch
 import torch.optim as optim
 import torch.nn.functional as F
+import torch.nn as nn
 from model import get_model_from_name
 from data import get_dataloader
 import sys
@@ -20,7 +21,7 @@ def get_trained_model(args, id, random_seed, train_loader, test_loader):
                           momentum=args.momentum, weight_decay=5e-4)
 
     adversary = LinfPGDAttack(
-        net, loss_fn=nn.CrossEntropyLoss(reduction="sum"), eps=8.0 / 255.0,
+        network, loss_fn=nn.CrossEntropyLoss(reduction="sum"), eps=8.0 / 255.0,
         nb_iter=10, eps_iter=2.0 / 255.0, rand_init=True, clip_min=0.0,
         clip_max=1.0, targeted=False)
 
@@ -35,6 +36,7 @@ def get_trained_model(args, id, random_seed, train_loader, test_loader):
     # print(list(network.parameters()))
     acc = test(args, network, test_loader, log_dict)
     for epoch in range(1, args.n_epochs + 1):
+        print("Epoch %d"%epoch, flush=True)
         train(args, network, optimizer, cifar_criterion, train_loader, log_dict, epoch, model_id=str(id), adversary = adversary)
         acc = test(args, network, test_loader, log_dict)
         torch.save(network.state_dict(), '{}/model_{}_{}_{}.pth'.format(args.save_dir, args.model_name, str(id), epoch))
