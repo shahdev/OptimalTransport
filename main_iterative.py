@@ -42,7 +42,7 @@ if __name__ == '__main__':
 
     for comm_round in range(args.num_comm_rounds):
         models, accuracies = routines.train_models(args, train_loader_array, test_loader, initial_model)
-
+        print("Communication Round: ", comm_round)
         # if args.debug:
         #     print(list(models[0].parameters()))
 
