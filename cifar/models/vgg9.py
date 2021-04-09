@@ -24,13 +24,6 @@ class VGG9(nn.Module):
              nn.Dropout(p=0.1),
              nn.Linear(in_features=512, out_features=10, bias=self.bias),
         )
-        self.init_bias()  # initialize bias
-
-    def init_bias(self):
-        for layer in self.net:
-            if isinstance(layer, nn.Conv2d):
-                nn.init.normal_(layer.weight, mean=0, std=0.01)
-                #nn.init.constant_(layer.bias, 0)
 
     def forward(self, x):
         out = self.net(x)

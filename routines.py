@@ -16,11 +16,17 @@ from advertorch.context import ctx_noparamgrad_and_eval
 def get_trained_model(args, id, random_seed, train_loader, test_loader, network=None):
     torch.backends.cudnn.enabled = False
     torch.manual_seed(random_seed)
+    if args.gpu_id!=-1:
+        device = 'cuda'
+    else:
+        device = 'cpu'
     if network is None:
         network = get_model_from_name(args, idx=id)
+        checkpoint=torch.load('initialization.pth', map_location=torch.device(device))
+        network.load_state_dict(checkpoint)
+        print("SAME INITIALIZATION")
     optimizer = optim.SGD(network.parameters(), lr=args.learning_rate,
                           momentum=args.momentum, weight_decay=5e-4)
-
     adversary = LinfPGDAttack(
         network, loss_fn=nn.CrossEntropyLoss(reduction="sum"), eps=8.0 / 255.0,
         nb_iter=10, eps_iter=2.0 / 255.0, rand_init=True, clip_min=0.0,
