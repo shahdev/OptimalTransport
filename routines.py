@@ -39,7 +39,11 @@ def compute_fisher_matrix(args, network, optimizer, cifar_criterion, train_loade
     for n in params:
         vt_local[n].data = ut_local[n].data*params[n].data
 
-    return ut_local.cpu(), vt_local.cpu()
+    for n in params:
+        ut_local[n] = ut_local[n].cpu()
+        vt_local[n] = vt_local[n].cpu()
+
+    return ut_local, vt_local
 
 def penalty(network, ut_local, ut_global, vt_local, vt_global, lb, weight_coefficient):
     params = {n: p for n, p in network.named_parameters() if p.requires_grad}
