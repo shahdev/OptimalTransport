@@ -21,8 +21,8 @@ def compute_fisher_matrix(args, network, optimizer, cifar_criterion, train_loade
     vt_local = {}
     params = {n: p for n, p in network.named_parameters() if p.requires_grad}
     for n in params:
-        ut_local[n] = torch.zeros(params[n].shape, requires_grad=False)
-        vt_local[n] = torch.zeros(params[n].shape, requires_grad=False)
+        ut_local[n] = torch.zeros(params[n].shape, requires_grad=False).cuda(args.gpu_id)
+        vt_local[n] = torch.zeros(params[n].shape, requires_grad=False).cuda(args.gpu_id)
 
     for batch_idx, (data, target) in enumerate(train_loader):
         if args.gpu_id!=-1:
@@ -39,7 +39,7 @@ def compute_fisher_matrix(args, network, optimizer, cifar_criterion, train_loade
     for n in params:
         vt_local[n].data = ut_local[n].data*params[n].data
 
-    return ut_local, vt_local
+    return ut_local.cpu(), vt_local.cpu()
 
 def penalty(network, ut_local, ut_global, vt_local, vt_global, lb, weight_coefficient):
     params = {n: p for n, p in network.named_parameters() if p.requires_grad}
@@ -93,6 +93,13 @@ def get_trained_model(args, id, random_seed, train_loader, test_loader, ut_local
     # log_dict['test_counter'] = [i * len(test_loader.dataset) for i in range(args.n_epochs + 1)]
     # print(list(network.parameters()))
     acc = test(args, network, test_loader, log_dict)
+
+    for n in ut_local:
+        ut_local[n] = ut_local[n].cuda(args.gpu_id)
+        vt_local[n] = vt_local[n].cuda(args.gpu_id)
+        ut_global[n] = ut_global[n].cuda(args.gpu_id)
+        vt_global[n] = vt_global[n].cuda(args.gpu_id)
+
     for epoch in range(1, args.n_epochs + 1):
         print("Epoch %d"%epoch, flush=True)
         train(args, network, optimizer, cifar_criterion, train_loader, 
@@ -101,6 +108,12 @@ def get_trained_model(args, id, random_seed, train_loader, test_loader, ut_local
         acc = test(args, network, test_loader, log_dict)
         torch.save(network.state_dict(), '{}/model_{}_{}_{}.pth'.format(args.save_dir, args.model_name, str(id), epoch))
         torch.save(optimizer.state_dict(), '{}/optimizer_{}_{}_{}.pth'.format(args.save_dir, args.model_name, str(id), epoch))
+
+    for n in ut_local:
+        ut_local[n] = ut_local[n].cpu()
+        vt_local[n] = vt_local[n].cpu()
+        ut_global[n] = ut_global[n].cpu()
+        vt_global[n] = vt_global[n].cpu()
 
     ut_local_new, vt_local_new = compute_fisher_matrix(args, network, optimizer, cifar_criterion, train_loader)
     return network, acc, (ut_local_new, vt_local_new)
@@ -260,12 +273,7 @@ def train(args, network, optimizer, cifar_criterion, train_loader, ut_local, ut_
     for batch_idx, (data, target) in enumerate(train_loader):
         if args.gpu_id!=-1:
             data = data.cuda(args.gpu_id)
-            target = target.cuda(args.gpu_id)
-            for n in ut_local:
-                ut_local[n] = ut_local[n].cuda(args.gpu_id)
-                vt_local[n] = vt_local[n].cuda(args.gpu_id)
-                ut_global[n] = ut_global[n].cuda(args.gpu_id)
-                vt_global[n] = vt_global[n].cuda(args.gpu_id)
+            target = target.cuda(args.gpu_id)            
 
         optimizer.zero_grad()
 
