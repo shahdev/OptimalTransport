@@ -50,7 +50,7 @@ def penalty(network, ut_local, ut_global, vt_local, vt_global, lb, weight_coeffi
         l3 -= (2*lb*params[n]*(vt_global[n] - weight_coefficient*vt_local[n])).sum()
     return l2 + l3
 
-def get_trained_model(args, id, random_seed, train_loader, test_loader, ut_local, ut_global, vt_local, vt_global, lb, network=None):
+def get_trained_model(args, id, random_seed, train_loader, test_loader, ut_local=None, ut_global=None, vt_local=None, vt_global=None, lb=0.0, network=None):
     torch.backends.cudnn.enabled = False
     torch.manual_seed(random_seed)
     if args.gpu_id!=-1:
@@ -62,6 +62,20 @@ def get_trained_model(args, id, random_seed, train_loader, test_loader, ut_local
         checkpoint=torch.load('initialization.pth', map_location=torch.device(device))
         network.load_state_dict(checkpoint)
         print("SAME INITIALIZATION")
+
+    params = {n: p for n, p in network.named_parameters() if p.requires_grad}
+    
+    if ut_local is None:
+        ut_global = {}
+        vt_global = {}
+        ut_local = {}
+        vt_local = {}
+        for n in params:
+            ut_global[n] = torch.zeros(params[n].shape, requires_grad=False)
+            vt_global[n] = torch.zeros(params[n].shape, requires_grad=False)            
+            ut_local[n] = torch.zeros(params[n].shape, requires_grad=False)
+            vt_local[n] = torch.zeros(params[n].shape, requires_grad=False)
+
     optimizer = optim.SGD(network.parameters(), lr=args.learning_rate,
                           momentum=args.momentum, weight_decay=5e-4)
     adversary = LinfPGDAttack(
@@ -345,7 +359,7 @@ def train_data_separated_models(args, local_train_loaders, local_test_loaders, t
     return networks, accuracies, local_accuracies
 
 
-def train_models(args, train_loader_array, test_loader, ut_local_array, vt_local_array, ut_global, vt_global, lb, initial_model=None):
+def train_models(args, train_loader_array, test_loader, ut_local_array=None, vt_local_array=None, ut_global=None, vt_global=None, lb=0.0, initial_model=None):
     networks = []
     accuracies = []
     ut_local_new_array = []
@@ -354,11 +368,11 @@ def train_models(args, train_loader_array, test_loader, ut_local_array, vt_local
         if initial_model is not None:
             network = copy.deepcopy(initial_model)
             network, acc, (ut_local_new, vt_local_new) = get_trained_model(args, i, i, train_loader_array[i], test_loader, 
-                ut_local_array[i], vt_local_array[i], ut_global, vt_global, lb,
+                ut_local=ut_local_array[i], vt_local=vt_local_array[i], ut_global=ut_global, vt_global=vt_global, lb=lb,
                 network=network)
         else:
-            network, acc, (ut_local_new, vt_local_new) = get_trained_model(args, i, i, train_loader_array[i], test_loader,
-                ut_local_array[i], vt_local_array[i], ut_global, vt_global, lb)
+            # ut arrays are also None
+            network, acc, (ut_local_new, vt_local_new) = get_trained_model(args, i, i, train_loader_array[i], test_loader)
         networks.append(network)
         accuracies.append(acc)
         ut_local_new_array.append(ut_local_new)

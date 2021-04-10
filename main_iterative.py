@@ -40,34 +40,20 @@ if __name__ == '__main__':
     print("------- Training independent models -------")
     initial_model = None
 
-    ut_local_array = []
-    vt_local_array = []
-
-    params = {n: p for n, p in network.named_parameters() if p.requires_grad}
-    
-    ut_global = {}
-    vt_global = {}
-
-    for n in params:
-        ut_global[n] = torch.zeros(params[n].shape, requires_grad=False)
-        vt_global[n] = torch.zeros(params[n].shape, requires_grad=False)
-
-    for i in range(args.num_models):
-        ut_local = {}
-        vt_local = {}
-        for n in params:
-            ut_local[n] = torch.zeros(params[n].shape, requires_grad=False)
-            vt_local[n] = torch.zeros(params[n].shape, requires_grad=False)
-        ut_local_array.append(ut_local)
-        vt_local_array.append(vt_local)
+    ut_local_array = None
+    vt_local_array = None
+    ut_global = None
+    vt_global = None
 
     lb = 0.0
     for comm_round in range(args.num_comm_rounds):
-        models, accuracies, (ut_local_array, vt_local_array) = routines.train_models(args, train_loader_array, test_loader, ut_local_array, vt_local_array, ut_global, vt_global, lb, initial_model)
-
+        models, accuracies, (ut_local_array, vt_local_array) = routines.train_models(args, train_loader_array, test_loader, ut_local_array=ut_local_array, vt_local_array=vt_local_array, ut_global=ut_global, vt_global=vt_global, lb=lb, initial_model=initial_model)
+        
+        ut_global = {}
+        vt_global = {}
         for n in params:
-            ut_global[n].data = torch.sum([x[n].data for x in ut_local_array])/len(ut_local_array)
-            vt_global[n].data = torch.sum([x[n].data for x in vt_local_array])/len(vt_local_array)
+            ut_global[n] = torch.sum([x[n] for x in ut_local_array])/len(ut_local_array)
+            vt_global[n] = torch.sum([x[n] for x in vt_local_array])/len(vt_local_array)
 
         print("Communication Round: ", comm_round)
         # if args.debug:
