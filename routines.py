@@ -32,6 +32,23 @@ def get_trained_model(args, id, random_seed, train_loader, test_loader, network=
         nb_iter=10, eps_iter=2.0 / 255.0, rand_init=True, clip_min=0.0,
         clip_max=1.0, targeted=False)
 
+    ut_local = []
+    vt_local = []
+    ut_global = []
+    vt_global = []
+    lb = 0.0
+    weight_coefficient = 1/args.num_models
+    
+    params = {n: p for n, p in network.named_parameters() if p.requires_grad}
+    import pdb; pdb.set_trace()
+    for i in range(len(network.named_parameters)):
+        v1 = np.zeros(trainable_weights[i].shape)
+        self.ut_local.append(K.variable(value=v1))
+        self.ut_global.append(K.variable(value=v1))
+        self.vt_local.append(K.variable(value=v1))
+        self.vt_global.append(K.variable(value=v1))
+
+
     cifar_criterion = torch.nn.CrossEntropyLoss()
     if args.gpu_id!=-1:
         network = network.cuda(args.gpu_id)
