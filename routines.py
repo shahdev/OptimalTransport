@@ -13,7 +13,44 @@ import copy
 from advertorch.attacks import LinfPGDAttack
 from advertorch.context import ctx_noparamgrad_and_eval
 
-def get_trained_model(args, id, random_seed, train_loader, test_loader, network=None):
+# Compute fisher matrix for FedCurvAT; on adversarially perturbed local data
+def compute_fisher_matrix(args, network, optimizer, cifar_criterion, train_loader):
+    network.eval()
+
+    ut_local = {}
+    vt_local = {}
+    params = {n: p for n, p in network.named_parameters() if p.requires_grad}
+    for n in params:
+        ut_local[n] = torch.zeros(params[n].shape, requires_grad=False)
+        vt_local[n] = torch.zeros(params[n].shape, requires_grad=False)
+
+    for batch_idx, (data, target) in enumerate(train_loader):
+        if args.gpu_id!=-1:
+            data = data.cuda(args.gpu_id)
+            target = target.cuda(args.gpu_id)
+        optimizer.zero_grad()                        
+        output = network(data)
+        loss = cifar_criterion(output, target)     
+        loss.backward()
+                    
+        for n in params:
+            ut_local[n].data += params[n].grad.data ** 2 / len(train_loader)
+
+    for n in params:
+        vt_local[n].data = ut_local[n].data*params[n].data
+
+    return ut_local, vt_local
+
+def penalty(network, ut_local, ut_global, vt_local, vt_global, lb, weight_coefficient):
+    params = {n: p for n, p in network.named_parameters() if p.requires_grad}
+    l2 = 0
+    l3 = 0
+    for n in params:
+        l2 += (lb*params[n]*params[n]*(ut_global[n] - weight_coefficient*ut_local[n])).sum()
+        l3 -= (2*lb*params[n]*(vt_global[n] - weight_coefficient*vt_local[n])).sum()
+    return l2 + l3
+
+def get_trained_model(args, id, random_seed, train_loader, test_loader, ut_local, ut_global, vt_local, vt_global, lb, network=None):
     torch.backends.cudnn.enabled = False
     torch.manual_seed(random_seed)
     if args.gpu_id!=-1:
@@ -32,23 +69,6 @@ def get_trained_model(args, id, random_seed, train_loader, test_loader, network=
         nb_iter=10, eps_iter=2.0 / 255.0, rand_init=True, clip_min=0.0,
         clip_max=1.0, targeted=False)
 
-    ut_local = []
-    vt_local = []
-    ut_global = []
-    vt_global = []
-    lb = 0.0
-    weight_coefficient = 1/args.num_models
-    
-    params = {n: p for n, p in network.named_parameters() if p.requires_grad}
-    import pdb; pdb.set_trace()
-    for i in range(len(network.named_parameters)):
-        v1 = np.zeros(trainable_weights[i].shape)
-        self.ut_local.append(K.variable(value=v1))
-        self.ut_global.append(K.variable(value=v1))
-        self.vt_local.append(K.variable(value=v1))
-        self.vt_global.append(K.variable(value=v1))
-
-
     cifar_criterion = torch.nn.CrossEntropyLoss()
     if args.gpu_id!=-1:
         network = network.cuda(args.gpu_id)
@@ -61,11 +81,15 @@ def get_trained_model(args, id, random_seed, train_loader, test_loader, network=
     acc = test(args, network, test_loader, log_dict)
     for epoch in range(1, args.n_epochs + 1):
         print("Epoch %d"%epoch, flush=True)
-        train(args, network, optimizer, cifar_criterion, train_loader, log_dict, epoch, model_id=str(id), adversary = adversary)
+        train(args, network, optimizer, cifar_criterion, train_loader, 
+            ut_local, ut_global, vt_local, vt_global, lb,
+            log_dict, epoch, model_id=str(id), adversary = adversary)
         acc = test(args, network, test_loader, log_dict)
         torch.save(network.state_dict(), '{}/model_{}_{}_{}.pth'.format(args.save_dir, args.model_name, str(id), epoch))
         torch.save(optimizer.state_dict(), '{}/optimizer_{}_{}_{}.pth'.format(args.save_dir, args.model_name, str(id), epoch))
-    return network, acc
+
+    ut_local_new, vt_local_new = compute_fisher_matrix(args, network, optimizer, cifar_criterion, train_loader)
+    return network, acc, (ut_local_new, vt_local_new)
 
 def check_freezed_params(model, frozen):
     flag = True
@@ -216,7 +240,7 @@ def get_pretrained_model(args, path, data_separated=False, idx=-1):
     #else:
     #    return model, state['test_accuracy'], state['local_test_accuracy']
 
-def train(args, network, optimizer, cifar_criterion, train_loader, log_dict, epoch, model_id=-1, adversary=None):
+def train(args, network, optimizer, cifar_criterion, train_loader, log_dict, epoch, model_id=-1, adversary=None, weight_coefficient): 
     network.train()
     for batch_idx, (data, target) in enumerate(train_loader):
         if args.gpu_id!=-1:
@@ -229,7 +253,7 @@ def train(args, network, optimizer, cifar_criterion, train_loader, log_dict, epo
         #             if batch_idx%2==0:
         #                 x = adversary.perturb(x, target)                        
         output = network(data)
-        loss = cifar_criterion(output, target)     
+        loss = cifar_criterion(output, target) + penalty(network, weight_coefficient)     
         loss.backward()
         optimizer.step()
         if batch_idx % args.log_interval == 0:
@@ -320,20 +344,27 @@ def train_data_separated_models(args, local_train_loaders, local_test_loaders, t
     return networks, accuracies, local_accuracies
 
 
-def train_models(args, train_loader_array, test_loader, initial_model=None):
+def train_models(args, train_loader_array, test_loader, ut_local_array, vt_local_array, ut_global, vt_global, lb, initial_model=None):
     networks = []
     accuracies = []
+    ut_local_new_array = []
+    vt_local_new_array = []
     for i in range(args.num_models):
         if initial_model is not None:
             network = copy.deepcopy(initial_model)
-            network, acc = get_trained_model(args, i, i, train_loader_array[i], test_loader, network=network)
+            network, acc, (ut_local_new, vt_local_new) = get_trained_model(args, i, i, train_loader_array[i], test_loader, 
+                ut_local_array[i], vt_local_array[i], ut_global, vt_global, lb
+                network=network)
         else:
-            network, acc = get_trained_model(args, i, i, train_loader_array[i], test_loader)
+            network, acc, (ut_local_new, vt_local_new) = get_trained_model(args, i, i, train_loader_array[i], test_loader,
+                ut_local_array[i], vt_local_array[i], ut_global, vt_global, lb)
         networks.append(network)
         accuracies.append(acc)
+        ut_local_new_array.append(ut_local_new)
+        vt_local_new_array.append(vt_local_new)
         if args.dump_final_models:
             save_final_model(args, i, network, acc)
-    return networks, accuracies
+    return networks, accuracies, (ut_local_new_array, vt_local_new_array)
 
 def save_final_data_separated_model(args, idx, model, local_test_accuracy, test_accuracy, choice):
     path = os.path.join(args.result_dir, args.exp_name, 'model_{}'.format(idx))
