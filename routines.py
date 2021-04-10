@@ -261,6 +261,11 @@ def train(args, network, optimizer, cifar_criterion, train_loader, ut_local, ut_
         if args.gpu_id!=-1:
             data = data.cuda(args.gpu_id)
             target = target.cuda(args.gpu_id)
+            ut_local = ut_local.cuda(args.gpu_id)
+            vt_local = vt_local.cuda(args.gpu_id)
+            ut_global = ut_global.cuda(args.gpu_id)
+            vt_global = vt_global.cuda(args.gpu_id)
+            
         optimizer.zero_grad()
 
         # if args.adversarial_training != 0 and args.trigger == 0 and epoch>60:
