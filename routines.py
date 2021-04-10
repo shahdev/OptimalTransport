@@ -254,7 +254,7 @@ def get_pretrained_model(args, path, data_separated=False, idx=-1):
     #else:
     #    return model, state['test_accuracy'], state['local_test_accuracy']
 
-def train(args, network, optimizer, cifar_criterion, train_loader, log_dict, epoch, model_id=-1, adversary=None):
+def train(args, network, optimizer, cifar_criterion, train_loader, ut_local, ut_global, vt_local, vt_global, lb, log_dict, epoch, model_id=-1, adversary=None):
     weight_coefficient = 1/args.num_models
     network.train()
     for batch_idx, (data, target) in enumerate(train_loader):
@@ -268,7 +268,7 @@ def train(args, network, optimizer, cifar_criterion, train_loader, log_dict, epo
         #             if batch_idx%2==0:
         #                 x = adversary.perturb(x, target)                        
         output = network(data)
-        loss = cifar_criterion(output, target) + penalty(network, weight_coefficient)     
+        loss = cifar_criterion(output, target) + penalty(network, ut_local, ut_global, vt_local, vt_global, lb, weight_coefficient)             
         loss.backward()
         optimizer.step()
         if batch_idx % args.log_interval == 0:
