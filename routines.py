@@ -240,7 +240,8 @@ def get_pretrained_model(args, path, data_separated=False, idx=-1):
     #else:
     #    return model, state['test_accuracy'], state['local_test_accuracy']
 
-def train(args, network, optimizer, cifar_criterion, train_loader, log_dict, epoch, model_id=-1, adversary=None, weight_coefficient): 
+def train(args, network, optimizer, cifar_criterion, train_loader, log_dict, epoch, model_id=-1, adversary=None):
+    weight_coefficient = 1/args.num_models
     network.train()
     for batch_idx, (data, target) in enumerate(train_loader):
         if args.gpu_id!=-1:
@@ -353,7 +354,7 @@ def train_models(args, train_loader_array, test_loader, ut_local_array, vt_local
         if initial_model is not None:
             network = copy.deepcopy(initial_model)
             network, acc, (ut_local_new, vt_local_new) = get_trained_model(args, i, i, train_loader_array[i], test_loader, 
-                ut_local_array[i], vt_local_array[i], ut_global, vt_global, lb
+                ut_local_array[i], vt_local_array[i], ut_global, vt_global, lb,
                 network=network)
         else:
             network, acc, (ut_local_new, vt_local_new) = get_trained_model(args, i, i, train_loader_array[i], test_loader,
