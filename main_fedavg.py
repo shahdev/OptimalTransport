@@ -40,10 +40,22 @@ if __name__ == '__main__':
     print("------- Training independent models -------")
     initial_model = None
 
-    for comm_round in range(args.num_comm_rounds):
-        print("Communication round: ", comm_round) 
-        models, accuracies = routines.train_models(args, train_loader_array, test_loader, initial_model)
+    ut_local_array = None
+    vt_local_array = None
+    ut_global = None
+    vt_global = None
 
+    lb = args.lb
+    for comm_round in range(args.num_comm_rounds):
+        models, accuracies, (ut_local_array, vt_local_array) = routines.train_models(args, train_loader_array, test_loader, ut_local_array=ut_local_array, vt_local_array=vt_local_array, ut_global=ut_global, vt_global=vt_global, lb=lb, initial_model=initial_model)
+        
+        ut_global = {}
+        vt_global = {}
+        for n in ut_local_array[0]:
+            ut_global[n] = torch.mean(torch.stack([x[n] for x in ut_local_array]))
+            vt_global[n] = torch.mean(torch.stack([x[n] for x in vt_local_array]))
+
+        print("Communication Round: ", comm_round)
         # if args.debug:
         #     print(list(models[0].parameters()))
 
@@ -139,4 +151,4 @@ if __name__ == '__main__':
 
         print("FYI: the parameters were: \n", args)
 
-        initial_model = naive_model #geometric_model #Set the model for next round of training
+        initial_model = naive_model #Set the model for next round of training

@@ -94,7 +94,7 @@ def get_parser():
     parser.add_argument('--config-dir', type=str, default="./configurations", help='config dir')
     parser.add_argument('--save-dir', type=str, help='save dir')
     parser.add_argument('--dataset-path', type=str, default='', help='dataset path')
-
+    parser.add_argument('--lb', default=0.0, type=float, help='regularization constant for fedcurvature')
     parser.add_argument('--num-comm-rounds', default=1, type=int, help='number of communication rounds for iterative optimal fusion')
     parser.add_argument('--adversarial-training', default=0, type=int, help='should we enable adversarial training?')
     # for simplenet
