@@ -67,10 +67,18 @@ def get_dataloader(args, unit_batch = False, no_randomness=False):
         else:
             dataloaders = []
             for i in range(args.num_models):                
-                local_dataset = torchvision.datasets.CIFAR10('./data/', train=True, download=args.to_download,
+                if args.data_augmentation == 1:
+                    print("DATA AUGMENTATION")
+                    local_dataset = torchvision.datasets.CIFAR10('./data/', train=True, download=args.to_download,
                                            transform=torchvision.transforms.Compose([
                                                torchvision.transforms.RandomHorizontalFlip(),
                                                torchvision.transforms.RandomAffine(0, translate=(0.1, 0.1)),
+                                               torchvision.transforms.ToTensor(),
+                                           ]))
+                else:
+                    print("NO DATA AUGMENTATION")
+                    local_dataset = torchvision.datasets.CIFAR10('./data/', train=True, download=args.to_download,
+                                           transform=torchvision.transforms.Compose([
                                                torchvision.transforms.ToTensor(),
                                            ]))
                 if args.dataset_path != '':

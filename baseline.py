@@ -22,7 +22,7 @@ def naive_ensembling(args, networks, test_loader):
     if args.width_ratio != 1:
         print("Unfortunately naive ensembling can't work if models are not of same shape!")
         return -1, None
-    weights = [(1-args.ensemble_step), args.ensemble_step]
+    weights = None #[(1-args.ensemble_step), args.ensemble_step]
     avg_pars = get_avg_parameters(networks, weights)
     ensemble_network = get_model_from_name(args)
     # put on GPU

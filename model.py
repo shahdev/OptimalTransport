@@ -24,7 +24,7 @@ def get_model_from_name(args, idx=-1):
         return BigMlpNet(args)
     elif args.model_name == 'cifarmlpnet':
         return CifarMlpNet(args)
-    elif args.model_name[0:3] == 'vgg' or args.model_name[0:3] == 'res':
+    elif args.model_name[0:3] == 'vgg' or args.model_name[0:3] == 'res' or args.model_name == 'nin':
         if args.second_model_name is None or idx == 0:
             barebone_config = {'model': args.model_name, 'dataset': args.dataset}
         else:

@@ -88,8 +88,12 @@ def get_parser():
     parser.add_argument('--dataset', default='mnist', type=str, choices=['mnist', 'Cifar10'],
                         help='dataset to use for the task')
     parser.add_argument('--num-models', default=2, type=int, help='number of models to ensemble')
+    parser.add_argument('--gamma', default=1, type=float, help='decay factor')
+    parser.add_argument('--F', default=1, type=int, help='decay frequency')
+    parser.add_argument('--E_min', default=1, type=int, help='minimum number of local training epochs')
+    parser.add_argument('--data_augmentation', default=1, type=float, help='data augmentation while training?')
     parser.add_argument('--model-name', type=str, default='simplenet',
-                        help='Type of neural network model (simplenet|smallmlpnet|mlpnet|bigmlpnet|cifarmlpnet|net|vgg11_nobias|vgg11)')
+                        help='Type of neural network model (simplenet|smallmlpnet|mlpnet|bigmlpnet|cifarmlpnet|net|vgg11_nobias|vgg11|nin)')
     parser.add_argument('--config-file', type=str, default=None, help='config file path')
     parser.add_argument('--config-dir', type=str, default="./configurations", help='config dir')
     parser.add_argument('--save-dir', type=str, help='save dir')

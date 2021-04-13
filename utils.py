@@ -124,6 +124,7 @@ def get_model_activations(args, models, config=None, layer_name=None, selective=
     return activations
 
 def get_model_layers_cfg(model_name):
+    import pdb; pdb.set_trace()
     print('model_name is ', model_name)
     if model_name == 'mlpnet' or model_name[-7:] =='encoder':
         return None
@@ -145,6 +146,7 @@ def _get_config(args):
     import hyperparameters.mlpnet_cifar10_baseline as mlpnet_hyperparams
 
     import hyperparameters.vgg9_cifar10_baseline as cifar10_vgg9_hyperparams  # vgg9_hyperparams 
+    import hyperparameters.nin as nin_hyperparams
     config = None
     second_config = None
 
@@ -165,6 +167,8 @@ def _get_config(args):
             config = cifar10_resnet18_nobias_nobn_hyperparams.config
         elif args.model_name == 'vgg9':
             config = cifar10_vgg9_hyperparams.config
+        elif args.model_name == 'nin':
+            config = nin_hyperparams.config
         else:
             raise NotImplementedError
 

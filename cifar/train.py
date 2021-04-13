@@ -249,7 +249,6 @@ def get_model(config, device=-1, relu_inplace=True):
     :return: An instance of torch.nn.Module
     """
     num_classes = 100 if config['dataset'] == 'Cifar100' else 10
-
     model = {
         'nin': lambda: models.NIN(),
         'vgg11_nobias': lambda: models.VGG('VGG11', num_classes, batch_norm=False, bias=False, relu_inplace=relu_inplace),

@@ -52,6 +52,7 @@ def penalty(network, ut_local, ut_global, vt_local, vt_global, lb, weight_coeffi
     for n in params:
         l2 += (lb*params[n]*params[n]*(ut_global[n] - weight_coefficient*ut_local[n])).sum()
         l3 -= (2*lb*params[n]*(vt_global[n] - weight_coefficient*vt_local[n])).sum()
+    #print(l2, l3)
     return l2 + l3
 
 def get_trained_model(args, id, random_seed, train_loader, test_loader, ut_local=None, ut_global=None, vt_local=None, vt_global=None, lb=0.0, network=None):
@@ -63,8 +64,11 @@ def get_trained_model(args, id, random_seed, train_loader, test_loader, ut_local
         device = 'cpu'
     if network is None:
         network = get_model_from_name(args, idx=id)
-        checkpoint=torch.load('initialization.pth', map_location=torch.device(device))
-        network.load_state_dict(checkpoint)
+        if args.model_name == 'vgg9':
+            checkpoint=torch.load('initialization.pth', map_location=torch.device(device))
+        elif args.model_name == 'nin':
+            checkpoint = torch.load('initialization_nin.pth', map_location=torch.device(device))
+        #network.load_state_dict(checkpoint)
         print("SAME INITIALIZATION")
 
     params = {n: p for n, p in network.named_parameters() if p.requires_grad}
@@ -81,7 +85,10 @@ def get_trained_model(args, id, random_seed, train_loader, test_loader, ut_local
             vt_local[n] = torch.zeros(params[n].shape, requires_grad=False)
 
     optimizer = optim.SGD(network.parameters(), lr=args.learning_rate,
-                          momentum=args.momentum, weight_decay=5e-4)
+                          momentum=args.momentum, weight_decay=1e-4)
+    print("LEARNING RATE : ", args.learning_rate)
+    print("MOMENTUM : ", args.momentum)
+    print("LAMBDA : ", lb) 
     adversary = LinfPGDAttack(
         network, loss_fn=nn.CrossEntropyLoss(reduction="sum"), eps=8.0 / 255.0,
         nb_iter=10, eps_iter=2.0 / 255.0, rand_init=True, clip_min=0.0,
@@ -110,8 +117,8 @@ def get_trained_model(args, id, random_seed, train_loader, test_loader, ut_local
             ut_local, ut_global, vt_local, vt_global, lb,
             log_dict, epoch, model_id=str(id), adversary = adversary)
         acc = test(args, network, test_loader, log_dict)
-        torch.save(network.state_dict(), '{}/model_{}_{}_{}.pth'.format(args.save_dir, args.model_name, str(id), epoch))
-        torch.save(optimizer.state_dict(), '{}/optimizer_{}_{}_{}.pth'.format(args.save_dir, args.model_name, str(id), epoch))
+        #torch.save(network.state_dict(), '{}/model_{}_{}_{}.pth'.format(args.save_dir, args.model_name, str(id), epoch))
+        #torch.save(optimizer.state_dict(), '{}/optimizer_{}_{}_{}.pth'.format(args.save_dir, args.model_name, str(id), epoch))
 
     for n in ut_local:
         ut_local[n] = ut_local[n].cpu()
@@ -289,15 +296,15 @@ def train(args, network, optimizer, cifar_criterion, train_loader, ut_local, ut_
         loss = cifar_criterion(output, target) + penalty(network, ut_local, ut_global, vt_local, vt_global, lb, weight_coefficient)             
         loss.backward()
         optimizer.step()
-        if batch_idx % args.log_interval == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx * len(data), len(train_loader.dataset),
-                100. * batch_idx / len(train_loader), loss.item()))
-            log_dict['train_losses'].append(loss.item())
-            log_dict['train_counter'].append(
-                (batch_idx*64) + ((epoch-1)*len(train_loader.dataset)))
+    batch_idx = len(train_loader)
+    print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+           epoch, batch_idx * len(data), len(train_loader.dataset),
+           100. * batch_idx / len(train_loader), loss.item()))
+    log_dict['train_losses'].append(loss.item())
+    log_dict['train_counter'].append(
+           (batch_idx*64) + ((epoch-1)*len(train_loader.dataset)))
 
-            assert args.exp_name == "exp_" + args.timestamp
+    assert args.exp_name == "exp_" + args.timestamp
 
 def test(args, network, test_loader, log_dict, debug=False, return_loss=False, is_local=False):
     network.eval()

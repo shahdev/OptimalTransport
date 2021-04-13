@@ -8,7 +8,7 @@ import utils
 import numpy as np
 import sys
 import torch
-
+import math
 
 PATH_TO_CIFAR = "./cifar/"
 sys.path.append(PATH_TO_CIFAR)
@@ -46,14 +46,20 @@ if __name__ == '__main__':
     vt_global = None
 
     lb = args.lb
+    E0 = args.n_epochs
+    gamma = args.gamma
+    F = args.F
+    E_min = args.E_min
     for comm_round in range(args.num_comm_rounds):
+        args.n_epochs = max(E_min, math.ceil(E0 * args.gamma ** int(comm_round / args.F)))
+        print("LOCAL TRAINING EPOCHS : ", args.n_epochs)
         models, accuracies, (ut_local_array, vt_local_array) = routines.train_models(args, train_loader_array, test_loader, ut_local_array=ut_local_array, vt_local_array=vt_local_array, ut_global=ut_global, vt_global=vt_global, lb=lb, initial_model=initial_model)
         
         ut_global = {}
         vt_global = {}
         for n in ut_local_array[0]:
-            ut_global[n] = torch.mean(torch.stack([x[n] for x in ut_local_array]))
-            vt_global[n] = torch.mean(torch.stack([x[n] for x in vt_local_array]))
+            ut_global[n] = torch.mean(torch.stack([x[n] for x in ut_local_array]), axis=0)
+            vt_global[n] = torch.mean(torch.stack([x[n] for x in vt_local_array]), axis=0)
 
         print("Communication Round: ", comm_round)
         # if args.debug:
@@ -108,8 +114,6 @@ if __name__ == '__main__':
 
         print("Time taken for geometric ensembling is {} seconds".format(str(end_time - st_time)))
         # run baselines
-        print("------- Prediction based ensembling -------")
-        prediction_acc = baseline.prediction_ensembling(args, models, test_loader)
 
         print("------- Naive ensembling of weights -------")
         naive_acc, naive_model = baseline.naive_ensembling(args, models, test_loader)
@@ -123,15 +127,11 @@ if __name__ == '__main__':
                 results_dic['model{}_acc'.format(idx)] = acc
 
             results_dic['geometric_acc'] = geometric_acc
-            results_dic['prediction_acc'] = prediction_acc
             results_dic['naive_acc'] = naive_acc
 
             # Additional statistics
             results_dic['geometric_gain'] = geometric_acc - max(accuracies)
             results_dic['geometric_gain_%'] = ((geometric_acc - max(accuracies))*100.0)/max(accuracies)
-            results_dic['prediction_gain'] = prediction_acc - max(accuracies)
-            results_dic['prediction_gain_%'] = ((prediction_acc - max(accuracies)) * 100.0) / max(accuracies)
-            results_dic['relative_loss_wrt_prediction'] = results_dic['prediction_gain_%'] - results_dic['geometric_gain_%']
 
             if args.eval_aligned:
                 results_dic['model0_aligned'] = args.model0_aligned_acc
@@ -152,3 +152,4 @@ if __name__ == '__main__':
         print("FYI: the parameters were: \n", args)
 
         initial_model = geometric_model #Set the model for next round of training
+        torch.save(initial_model.state_dict(),  '{}/global_model_{}.pth'.format(args.save_dir, comm_round))
