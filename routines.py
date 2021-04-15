@@ -68,7 +68,7 @@ def get_trained_model(args, id, random_seed, train_loader, test_loader, ut_local
             checkpoint=torch.load('initialization.pth', map_location=torch.device(device))
         elif args.model_name == 'nin':
             checkpoint = torch.load('initialization_nin.pth', map_location=torch.device(device))
-        #network.load_state_dict(checkpoint)
+        network.load_state_dict(checkpoint)
         print("SAME INITIALIZATION")
 
     params = {n: p for n, p in network.named_parameters() if p.requires_grad}
@@ -282,6 +282,7 @@ def train(args, network, optimizer, cifar_criterion, train_loader, ut_local, ut_
     weight_coefficient = 1/args.num_models
     network.train()
     for batch_idx, (data, target) in enumerate(train_loader):
+        #print(batch_idx)
         if args.gpu_id!=-1:
             data = data.cuda(args.gpu_id)
             target = target.cuda(args.gpu_id)            
@@ -298,7 +299,7 @@ def train(args, network, optimizer, cifar_criterion, train_loader, ut_local, ut_
         optimizer.step()
     batch_idx = len(train_loader)
     print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-           epoch, batch_idx * len(data), len(train_loader.dataset),
+           epoch, len(train_loader.dataset), len(train_loader.dataset),
            100. * batch_idx / len(train_loader), loss.item()))
     log_dict['train_losses'].append(loss.item())
     log_dict['train_counter'].append(
@@ -384,13 +385,19 @@ def train_data_separated_models(args, local_train_loaders, local_test_loaders, t
     return networks, accuracies, local_accuracies
 
 
-def train_models(args, train_loader_array, test_loader, ut_local_array=None, vt_local_array=None, ut_global=None, vt_global=None, lb=0.0, initial_model=None):
+def train_models(args, train_loader_array, test_loader, ut_local_array=None, vt_local_array=None, ut_global=None, vt_global=None, lb=0.0, initial_model=None, checkpoint_models=None):
     networks = []
     accuracies = []
     ut_local_new_array = []
     vt_local_new_array = []
     for i in range(args.num_models):
-        if initial_model is not None:
+        if checkpoint_models is not None:
+            print("CHECKPOINT HERE")
+            network = checkpoint_models[i]
+            network, acc, (ut_local_new, vt_local_new) = get_trained_model(args, i, i, train_loader_array[i], test_loader,
+                ut_local=ut_local_array[i], vt_local=vt_local_array[i], ut_global=ut_global, vt_global=vt_global, lb=lb,
+                network=network)
+        elif initial_model is not None:
             network = copy.deepcopy(initial_model)
             network, acc, (ut_local_new, vt_local_new) = get_trained_model(args, i, i, train_loader_array[i], test_loader, 
                 ut_local=ut_local_array[i], vt_local=vt_local_array[i], ut_global=ut_global, vt_global=vt_global, lb=lb,

@@ -87,7 +87,6 @@ def isnan(x):
 def get_model_activations(args, models, config=None, layer_name=None, selective=False, personal_dataset = None):
     import compute_activations
     from data import get_dataloader
-
     if args.activation_histograms and args.act_num_samples > 0:
         if args.dataset == 'mnist':
             unit_batch_train_loader, _ = get_dataloader(args, unit_batch=True)

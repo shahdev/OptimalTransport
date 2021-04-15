@@ -50,13 +50,12 @@ if __name__ == '__main__':
     gamma = args.gamma
     F = args.F
     E_min = args.E_min
+    checkpoint_models = None
     for comm_round in range(args.num_comm_rounds):
         args.n_epochs = max(E_min, math.ceil(E0 * args.gamma ** int(comm_round / args.F)))
-        if comm_round == 0:
-            args.n_epochs = 75
         print("LOCAL TRAINING EPOCHS : ", args.n_epochs)
-        models, accuracies, (ut_local_array, vt_local_array) = routines.train_models(args, train_loader_array, test_loader, ut_local_array=ut_local_array, vt_local_array=vt_local_array, ut_global=ut_global, vt_global=vt_global, lb=lb, initial_model=initial_model)
-        
+        models, accuracies, (ut_local_array, vt_local_array) = routines.train_models(args, train_loader_array, test_loader, ut_local_array=ut_local_array, vt_local_array=vt_local_array, ut_global=ut_global, vt_global=vt_global, lb=lb, initial_model=initial_model, checkpoint_models=checkpoint_models)
+       	checkpoint_models = models 
         ut_global = {}
         vt_global = {}
         for n in ut_local_array[0]:
@@ -150,13 +149,3 @@ if __name__ == '__main__':
             print('----- Saved results at {} ------'.format(args.save_result_file))
             print(results_dic)
 
-
-        print("FYI: the parameters were: \n", args)
-        if comm_round == 0:
-            initial_model = geometric_model #Set the model for next round of training
-            print("OPTIMAL TRANSPORT FUSION")
-        else:
-            initial_model = naive_model
-            print("NAIVE AVERAGE FUSION")
-
-        torch.save(initial_model.state_dict(),  '{}/global_model_{}.pth'.format(args.save_dir, comm_round))
