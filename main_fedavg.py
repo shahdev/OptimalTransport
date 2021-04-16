@@ -53,7 +53,7 @@ if __name__ == '__main__':
     for comm_round in range(args.num_comm_rounds):
         args.n_epochs = max(E_min, math.ceil(E0 * args.gamma ** int(comm_round / args.F)))
         print("LOCAL TRAINING EPOCHS : ", args.n_epochs)
-        models, accuracies, (ut_local_array, vt_local_array) = routines.train_models(args, train_loader_array, test_loader, ut_local_array=ut_local_array, vt_local_array=vt_local_array, ut_global=ut_global, vt_global=vt_global, lb=lb, initial_model=initial_model)
+        models, accuracies, adv_acuracies, (ut_local_array, vt_local_array) = routines.train_models(args, train_loader_array, test_loader, ut_local_array=ut_local_array, vt_local_array=vt_local_array, ut_global=ut_global, vt_global=vt_global, lb=lb, initial_model=initial_model)
         
         ut_global = {}
         vt_global = {}
@@ -99,7 +99,7 @@ if __name__ == '__main__':
 
         print("------- Naive ensembling of weights -------")
         naive_acc, naive_model = baseline.naive_ensembling(args, models, test_loader)
-
+        naive_adv_acc = routines.test_adv(args, naive_model, test_loader, log_dict) 
         final_results_dic = {}
         if args.save_result_file != '':            
             results_dic = {}
@@ -109,7 +109,7 @@ if __name__ == '__main__':
                 results_dic['model{}_acc'.format(idx)] = acc
 
             results_dic['naive_acc'] = naive_acc
-
+            results['naive_adv_acc'] = naive_adv_acc
             # Additional statistics
             final_results_dic[comm_round] = results_dic
             utils.save_results_params_csv(

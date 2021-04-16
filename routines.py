@@ -14,7 +14,7 @@ from advertorch.attacks import LinfPGDAttack
 from advertorch.context import ctx_noparamgrad_and_eval
 
 # Compute fisher matrix for FedCurvAT; on adversarially perturbed local data
-def compute_fisher_matrix(args, network, optimizer, cifar_criterion, train_loader):
+def compute_fisher_matrix(args, network, optimizer, cifar_criterion, train_loader, adversary=None):
     network.eval()
 
     ut_local = {}
@@ -28,7 +28,11 @@ def compute_fisher_matrix(args, network, optimizer, cifar_criterion, train_loade
         if args.gpu_id!=-1:
             data = data.cuda(args.gpu_id)
             target = target.cuda(args.gpu_id)
-        optimizer.zero_grad()                        
+        optimizer.zero_grad()  
+        if args.adversarial_training != 0:
+            with ctx_noparamgrad_and_eval(network):
+                data = adversary.perturb(data, target)
+
         output = network(data)
         loss = cifar_criterion(output, target)     
         loss.backward()
@@ -117,6 +121,9 @@ def get_trained_model(args, id, random_seed, train_loader, test_loader, ut_local
             ut_local, ut_global, vt_local, vt_global, lb,
             log_dict, epoch, model_id=str(id), adversary = adversary)
         acc = test(args, network, test_loader, log_dict)
+        adv_acc = 0.0
+        if args.adversarial_training != 0:
+            adv_acc = test_adv(args, network, test_loader, log_dict, adversary=adversary) 
         #torch.save(network.state_dict(), '{}/model_{}_{}_{}.pth'.format(args.save_dir, args.model_name, str(id), epoch))
         #torch.save(optimizer.state_dict(), '{}/optimizer_{}_{}_{}.pth'.format(args.save_dir, args.model_name, str(id), epoch))
 
@@ -126,8 +133,8 @@ def get_trained_model(args, id, random_seed, train_loader, test_loader, ut_local
         ut_global[n] = ut_global[n].cpu()
         vt_global[n] = vt_global[n].cpu()
 
-    ut_local_new, vt_local_new = compute_fisher_matrix(args, network, optimizer, cifar_criterion, train_loader)
-    return network, acc, (ut_local_new, vt_local_new)
+    ut_local_new, vt_local_new = compute_fisher_matrix(args, network, optimizer, cifar_criterion, train_loader, adversary=adversary)
+    return network, acc, adv_acc, (ut_local_new, vt_local_new)
 
 def check_freezed_params(model, frozen):
     flag = True
@@ -289,10 +296,10 @@ def train(args, network, optimizer, cifar_criterion, train_loader, ut_local, ut_
 
         optimizer.zero_grad()
 
-        # if args.adversarial_training != 0 and args.trigger == 0 and epoch>60:
-        #     with ctx_noparamgrad_and_eval(net):
-        #             if batch_idx%2==0:
-        #                 x = adversary.perturb(x, target)                        
+        if args.adversarial_training != 0:
+            with ctx_noparamgrad_and_eval(network):
+                data = adversary.perturb(data, target)
+
         output = network(data)
         loss = cifar_criterion(output, target) + penalty(network, ut_local, ut_global, vt_local, vt_global, lb, weight_coefficient)             
         loss.backward()
@@ -306,6 +313,64 @@ def train(args, network, optimizer, cifar_criterion, train_loader, ut_local, ut_
            (batch_idx*64) + ((epoch-1)*len(train_loader.dataset)))
 
     assert args.exp_name == "exp_" + args.timestamp
+
+def test_adv(args, network, test_loader, log_dict, debug=False, return_loss=False, is_local=False, adversary=None):
+    network.eval()
+    test_loss = 0
+    correct = 0
+    if is_local:
+        print("\n--------- Testing in local mode ---------")
+    else:
+        print("\n--------- Testing in global mode ---------")
+
+    if args.dataset.lower() == 'cifar10':
+        cifar_criterion = torch.nn.CrossEntropyLoss()
+
+    if adversary is None:
+        adversary = LinfPGDAttack(
+        network, loss_fn=nn.CrossEntropyLoss(reduction="sum"), eps=8.0 / 255.0,
+        nb_iter=10, eps_iter=2.0 / 255.0, rand_init=True, clip_min=0.0,
+        clip_max=1.0, targeted=False)
+
+    #   with torch.no_grad():
+    for data, target in test_loader:
+        if args.gpu_id!=-1:
+            data = data.cuda(args.gpu_id)
+            target = target.cuda(args.gpu_id)
+
+        with ctx_noparamgrad_and_eval(network):
+            data = adversary.perturb(data, target)
+
+        output = network(data)
+        if debug:
+            print("output is ", output)
+
+        if args.dataset.lower() == 'cifar10':
+            # mnist models return log_softmax outputs, while cifar ones return raw values!
+            test_loss += cifar_criterion(output, target).item()
+        elif args.dataset.lower() == 'mnist':
+            test_loss += F.nll_loss(output, target, size_average=False).item()
+
+        pred = output.data.max(1, keepdim=True)[1]
+        correct += pred.eq(target.data.view_as(pred)).sum()
+
+    print("size of test_loader dataset: ", len(test_loader.dataset))
+    test_loss /= len(test_loader.dataset)
+    if is_local:
+        string_info = 'local_test_adv'
+    else:
+        string_info = 'test_adv'
+    log_dict['{}_losses'.format(string_info)].append(test_loss)
+    print('\nAdv Test set: Avg. loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
+        test_loss, correct, len(test_loader.dataset),
+        100. * correct / len(test_loader.dataset)))
+
+    ans = (float(correct) * 100.0) / len(test_loader.dataset)
+
+    if not return_loss:
+        return ans
+    else:
+        return ans, test_loss
 
 def test(args, network, test_loader, log_dict, debug=False, return_loss=False, is_local=False):
     network.eval()
@@ -321,11 +386,6 @@ def test(args, network, test_loader, log_dict, debug=False, return_loss=False, i
 
     #   with torch.no_grad():
     for data, target in test_loader:
-        # print(data.shape, target.shape)
-        # if len(target.shape)==1:
-        #     data = data.unsqueeze(0)
-        #     target = target.unsqueeze(0)
-        # print(data, target)
         if args.gpu_id!=-1:
             data = data.cuda(args.gpu_id)
             target = target.cuda(args.gpu_id)
@@ -388,18 +448,19 @@ def train_data_separated_models(args, local_train_loaders, local_test_loaders, t
 def train_models(args, train_loader_array, test_loader, ut_local_array=None, vt_local_array=None, ut_global=None, vt_global=None, lb=0.0, initial_model=None, checkpoint_models=None):
     networks = []
     accuracies = []
+    adv_accuracies = []
     ut_local_new_array = []
     vt_local_new_array = []
     for i in range(args.num_models):
         if checkpoint_models is not None:
             print("CHECKPOINT HERE")
             network = checkpoint_models[i]
-            network, acc, (ut_local_new, vt_local_new) = get_trained_model(args, i, i, train_loader_array[i], test_loader,
+            network, acc, adv_acc, (ut_local_new, vt_local_new) = get_trained_model(args, i, i, train_loader_array[i], test_loader,
                 ut_local=ut_local_array[i], vt_local=vt_local_array[i], ut_global=ut_global, vt_global=vt_global, lb=lb,
                 network=network)
         elif initial_model is not None:
             network = copy.deepcopy(initial_model)
-            network, acc, (ut_local_new, vt_local_new) = get_trained_model(args, i, i, train_loader_array[i], test_loader, 
+            network, acc, adv_acc, (ut_local_new, vt_local_new) = get_trained_model(args, i, i, train_loader_array[i], test_loader, 
                 ut_local=ut_local_array[i], vt_local=vt_local_array[i], ut_global=ut_global, vt_global=vt_global, lb=lb,
                 network=network)
         else:
@@ -407,11 +468,12 @@ def train_models(args, train_loader_array, test_loader, ut_local_array=None, vt_
             network, acc, (ut_local_new, vt_local_new) = get_trained_model(args, i, i, train_loader_array[i], test_loader)
         networks.append(network)
         accuracies.append(acc)
+        adv_accuracies.append(adv_acc)
         ut_local_new_array.append(ut_local_new)
         vt_local_new_array.append(vt_local_new)
         if args.dump_final_models:
             save_final_model(args, i, network, acc)
-    return networks, accuracies, (ut_local_new_array, vt_local_new_array)
+    return networks, accuracies, adv_accuracies, (ut_local_new_array, vt_local_new_array)
 
 def save_final_data_separated_model(args, idx, model, local_test_accuracy, test_accuracy, choice):
     path = os.path.join(args.result_dir, args.exp_name, 'model_{}'.format(idx))
