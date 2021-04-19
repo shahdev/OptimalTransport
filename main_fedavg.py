@@ -53,7 +53,7 @@ if __name__ == '__main__':
     for comm_round in range(args.num_comm_rounds):
         args.n_epochs = max(E_min, math.ceil(E0 * args.gamma ** int(comm_round / args.F)))
         print("LOCAL TRAINING EPOCHS : ", args.n_epochs)
-        models, accuracies, adv_acuracies, (ut_local_array, vt_local_array) = routines.train_models(args, train_loader_array, test_loader, ut_local_array=ut_local_array, vt_local_array=vt_local_array, ut_global=ut_global, vt_global=vt_global, lb=lb, initial_model=initial_model)
+        models, accuracies, adv_accuracies, (ut_local_array, vt_local_array) = routines.train_models(args, train_loader_array, test_loader, ut_local_array=ut_local_array, vt_local_array=vt_local_array, ut_global=ut_global, vt_global=vt_global, lb=lb, initial_model=initial_model)
         
         ut_global = {}
         vt_global = {}
@@ -64,12 +64,6 @@ if __name__ == '__main__':
         print("Communication Round: ", comm_round)
         # if args.debug:
         #     print(list(models[0].parameters()))
-
-        if args.same_model!=-1:
-            print("Debugging with same model")
-            model, acc = models[args.same_model], accuracies[args.same_model]
-            models = [model, model]
-            accuracies = [acc, acc]
 
         for name, param in models[0].named_parameters():
             print(f'layer {name} has #params ', param.numel())
@@ -99,6 +93,7 @@ if __name__ == '__main__':
 
         print("------- Naive ensembling of weights -------")
         naive_acc, naive_model = baseline.naive_ensembling(args, models, test_loader)
+        log_dict = {}
         naive_adv_acc = routines.test_adv(args, naive_model, test_loader, log_dict) 
         final_results_dic = {}
         if args.save_result_file != '':            
@@ -107,9 +102,11 @@ if __name__ == '__main__':
 
             for idx, acc in enumerate(accuracies):
                 results_dic['model{}_acc'.format(idx)] = acc
-
+            
+            for idx, acc in enumerate(adv_accuracies):
+                results_dic['model{}_adv_acc'.format(idx)] = acc
             results_dic['naive_acc'] = naive_acc
-            results['naive_adv_acc'] = naive_adv_acc
+            results_dic['naive_adv_acc'] = naive_adv_acc
             # Additional statistics
             final_results_dic[comm_round] = results_dic
             utils.save_results_params_csv(

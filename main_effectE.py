@@ -54,7 +54,7 @@ if __name__ == '__main__':
     for comm_round in range(args.num_comm_rounds):
         args.n_epochs = max(E_min, math.ceil(E0 * args.gamma ** int(comm_round / args.F)))
         print("LOCAL TRAINING EPOCHS : ", args.n_epochs)
-        models, accuracies, (ut_local_array, vt_local_array) = routines.train_models(args, train_loader_array, test_loader, ut_local_array=ut_local_array, vt_local_array=vt_local_array, ut_global=ut_global, vt_global=vt_global, lb=lb, initial_model=initial_model, checkpoint_models=checkpoint_models)
+        models, accuracies, adv_accuracies, (ut_local_array, vt_local_array) = routines.train_models(args, train_loader_array, test_loader, ut_local_array=ut_local_array, vt_local_array=vt_local_array, ut_global=ut_global, vt_global=vt_global, lb=lb, initial_model=initial_model, checkpoint_models=checkpoint_models)
        	checkpoint_models = models 
         ut_global = {}
         vt_global = {}
@@ -63,14 +63,6 @@ if __name__ == '__main__':
             vt_global[n] = torch.mean(torch.stack([x[n] for x in vt_local_array]), axis=0)
 
         print("Communication Round: ", comm_round)
-        # if args.debug:
-        #     print(list(models[0].parameters()))
-
-        if args.same_model!=-1:
-            print("Debugging with same model")
-            model, acc = models[args.same_model], accuracies[args.same_model]
-            models = [model, model]
-            accuracies = [acc, acc]
 
         for name, param in models[0].named_parameters():
             print(f'layer {name} has #params ', param.numel())
@@ -105,9 +97,9 @@ if __name__ == '__main__':
 
         print("Timer start")
         st_time = time.perf_counter()
-
+        log_dict = {}
         geometric_acc, geometric_model = wasserstein_ensemble.geometric_ensembling_modularized(args, models, train_loader_array, test_loader, activations)
-        
+        geometric_adv_acc = routines.test_adv(args, geometric_model, test_loader, log_dict) 
         end_time = time.perf_counter()
         print("Timer ends")
         setattr(args, 'geometric_time', end_time - st_time)
@@ -118,7 +110,7 @@ if __name__ == '__main__':
 
         print("------- Naive ensembling of weights -------")
         naive_acc, naive_model = baseline.naive_ensembling(args, models, test_loader)
-
+        naive_adv_acc = routines.test_adv(args, naive_model, test_loader, log_dict)
         final_results_dic = {}
         if args.save_result_file != '':            
             results_dic = {}
@@ -126,13 +118,13 @@ if __name__ == '__main__':
 
             for idx, acc in enumerate(accuracies):
                 results_dic['model{}_acc'.format(idx)] = acc
+            for idx, acc in enumerate(adv_accuracies):
+                results_dic['model{}_adv_acc'.format(idx)] = acc
 
             results_dic['geometric_acc'] = geometric_acc
             results_dic['naive_acc'] = naive_acc
-
-            # Additional statistics
-            results_dic['geometric_gain'] = geometric_acc - max(accuracies)
-            results_dic['geometric_gain_%'] = ((geometric_acc - max(accuracies))*100.0)/max(accuracies)
+            results_dic['geometric_adv_acc'] = geometric_adv_acc
+            results_dic['naive_adv_acc'] = naive_adv_acc
 
             if args.eval_aligned:
                 results_dic['model0_aligned'] = args.model0_aligned_acc

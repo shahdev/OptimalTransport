@@ -93,6 +93,7 @@ def get_trained_model(args, id, random_seed, train_loader, test_loader, ut_local
     print("LEARNING RATE : ", args.learning_rate)
     print("MOMENTUM : ", args.momentum)
     print("LAMBDA : ", lb) 
+    print("AVDERSARIAL TRAINING : ", args.adversarial_training)
     adversary = LinfPGDAttack(
         network, loss_fn=nn.CrossEntropyLoss(reduction="sum"), eps=8.0 / 255.0,
         nb_iter=10, eps_iter=2.0 / 255.0, rand_init=True, clip_min=0.0,
@@ -120,10 +121,10 @@ def get_trained_model(args, id, random_seed, train_loader, test_loader, ut_local
         train(args, network, optimizer, cifar_criterion, train_loader, 
             ut_local, ut_global, vt_local, vt_global, lb,
             log_dict, epoch, model_id=str(id), adversary = adversary)
-        acc = test(args, network, test_loader, log_dict)
-        adv_acc = 0.0
-        if args.adversarial_training != 0:
-            adv_acc = test_adv(args, network, test_loader, log_dict, adversary=adversary) 
+    acc = test(args, network, test_loader, log_dict)
+    adv_acc = 0.0
+    if args.adversarial_training != 0:
+        adv_acc = test_adv(args, network, test_loader, log_dict, adversary=adversary) 
         #torch.save(network.state_dict(), '{}/model_{}_{}_{}.pth'.format(args.save_dir, args.model_name, str(id), epoch))
         #torch.save(optimizer.state_dict(), '{}/optimizer_{}_{}_{}.pth'.format(args.save_dir, args.model_name, str(id), epoch))
 
@@ -356,11 +357,6 @@ def test_adv(args, network, test_loader, log_dict, debug=False, return_loss=Fals
 
     print("size of test_loader dataset: ", len(test_loader.dataset))
     test_loss /= len(test_loader.dataset)
-    if is_local:
-        string_info = 'local_test_adv'
-    else:
-        string_info = 'test_adv'
-    log_dict['{}_losses'.format(string_info)].append(test_loss)
     print('\nAdv Test set: Avg. loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
         test_loss, correct, len(test_loader.dataset),
         100. * correct / len(test_loader.dataset)))
@@ -465,7 +461,7 @@ def train_models(args, train_loader_array, test_loader, ut_local_array=None, vt_
                 network=network)
         else:
             # ut arrays are also None
-            network, acc, (ut_local_new, vt_local_new) = get_trained_model(args, i, i, train_loader_array[i], test_loader)
+            network, acc, adv_acc, (ut_local_new, vt_local_new) = get_trained_model(args, i, i, train_loader_array[i], test_loader)
         networks.append(network)
         accuracies.append(acc)
         adv_accuracies.append(adv_acc)
