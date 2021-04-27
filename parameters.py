@@ -123,7 +123,7 @@ def get_parser():
     parser.add_argument('--debug', action='store_true', help='print debug statements')
     parser.add_argument('--cifar-style-data', action='store_true', help='use data loader in cifar style')
     parser.add_argument('--activation-histograms', action='store_true', help='utilize activation histograms')
-    parser.add_argument('--act-num-samples', default=100, type=int, help='num of samples to compute activation stats')
+    parser.add_argument('--act-num-samples', default=1000, type=int, help='num of samples to compute activation stats')
     parser.add_argument('--softmax-temperature', default=1, type=float, help='softmax temperature for activation weights (default: 1)')
     parser.add_argument('--activation-mode', type=str, default=None, choices=['mean', 'std', 'meanstd', 'raw'],
                         help='mode that chooses how the importance of a neuron is calculated.')

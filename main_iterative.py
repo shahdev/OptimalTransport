@@ -72,7 +72,7 @@ if __name__ == '__main__':
         # second_config is not needed here as well, since it's just used for the dataloader!
         print("Activation Timer start")
         st_time = time.perf_counter()
-        activations = utils.get_model_activations(args, models, config=config)
+        activations = utils.get_model_activations(args, models, train_loader_array=train_loader_array, config=config)
         end_time = time.perf_counter()
         setattr(args, 'activation_time', end_time - st_time)
         print("Activation Timer ends")

@@ -84,21 +84,30 @@ def isnan(x):
     return x != x
 
 
-def get_model_activations(args, models, config=None, layer_name=None, selective=False, personal_dataset = None):
+def get_model_activations(args, models, train_loader_array=None, config=None, layer_name=None, selective=False, personal_dataset = None):
     import compute_activations
     from data import get_dataloader
     if args.activation_histograms and args.act_num_samples > 0:
-        if args.dataset == 'mnist':
-            unit_batch_train_loader, _ = get_dataloader(args, unit_batch=True)
+        if train_loader_array is None:
+            if args.dataset == 'mnist':
+                unit_batch_train_loader, _ = get_dataloader(args, unit_batch=True)
 
-        elif args.dataset.lower()[0:7] == 'cifar10':
-            if config is None:
-                config = args.config # just use the config in arg
-            unit_batch_train_loader, _ = cifar_train.get_dataset(config, unit_batch_train=True)
+            elif args.dataset.lower()[0:7] == 'cifar10':
+                if config is None:
+                    config = args.config # just use the config in arg
+                unit_batch_train_loader, _ = cifar_train.get_dataset(config, unit_batch_train=True)
 
         if args.activation_mode is None:
-            activations = compute_activations.compute_activations_across_models(args, models, unit_batch_train_loader,
-                                                                        args.act_num_samples)
+            activations = {}
+            for idx in range(len(models)):
+                if train_loader_array is not None:
+                    unit_batch_train_loader = train_loader_array[idx]
+                    activation = compute_activations.compute_activations_across_models(args, [models[idx]], unit_batch_train_loader,
+                                                                        args.act_num_samples)  
+                    activations[idx] = activation[0]
+                    
+            # activations = compute_activations.compute_activations_across_models(args, models, unit_batch_train_loader,
+            #                                                             args.act_num_samples)
         else:
             if selective and args.update_acts:
                 activations = compute_activations.compute_selective_activation(args, models,
