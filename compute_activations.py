@@ -25,7 +25,7 @@ checkpoint_type = 'final' # which checkpoint to use for ensembling (either of 'b
 # num_samples = 100
 
 
-def compute_activations(model, train_loader, num_samples):
+def compute_activations(args, model, train_loader, num_samples, adversary=None):
     '''
 
     This method can be called from another python module. Example usage demonstrated here.
@@ -55,8 +55,14 @@ def compute_activations(model, train_loader, num_samples):
 
         return hook
 
-    model.train()
+    if adversary is None:
+        adversary = LinfPGDAttack(
+        model, loss_fn=nn.CrossEntropyLoss(reduction="sum"), eps=8.0 / 255.0,
+        nb_iter=10, eps_iter=2.0 / 255.0, rand_init=True, clip_min=0.0,
+        clip_max=1.0, targeted=False)
 
+    model.train()
+    num_samples = len(train_loader) - 1
     # Set forward hooks for all the layers
     for name, layer in model.named_modules():
         if name == '':
@@ -70,7 +76,10 @@ def compute_activations(model, train_loader, num_samples):
     for batch_idx, (data, target) in enumerate(train_loader):
         if args.gpu_id != -1:
             data = data.cuda(args.gpu_id)
-            # datapoints.append(data)
+            target = target.cuda(args.gpu_id)
+            if args.adversarial_training != 0:
+                with ctx_noparamgrad_and_eval(model):
+                    data = adversary.perturb(data, target)
             model(data)
             num_samples_processed += 1
             if num_samples_processed == num_samples:

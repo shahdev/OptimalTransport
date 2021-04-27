@@ -102,9 +102,8 @@ def get_model_activations(args, models, train_loader_array=None, config=None, la
             for idx in range(len(models)):
                 if train_loader_array is not None:
                     unit_batch_train_loader = train_loader_array[idx]
-                    activation = compute_activations.compute_activations_across_models(args, [models[idx]], unit_batch_train_loader,
-                                                                        args.act_num_samples)  
-                    activations[idx] = activation[0]
+                    activation, _ = compute_activations.compute_activations(args, models[idx], unit_batch_train_loader, args.act_num_samples, adversary=)                      
+                    activations[idx] = activation
                     
             # activations = compute_activations.compute_activations_across_models(args, models, unit_batch_train_loader,
             #                                                             args.act_num_samples)
