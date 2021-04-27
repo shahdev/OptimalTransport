@@ -40,7 +40,6 @@ def compute_activations(model, train_loader, num_samples):
 
     activation = {}
     num_samples_processed = 0
-
     # Define forward hook that averages the activations
     # over number of samples processed
     def get_activation(name):
@@ -104,7 +103,6 @@ def compute_activations_across_models(args, models, train_loader, num_samples, d
 
     # Prepare all the models
     activations = {}
-
     for idx, model in enumerate(models):
 
         # Initialize the activation dictionary for each model
@@ -123,15 +121,18 @@ def compute_activations_across_models(args, models, train_loader, num_samples, d
 
     # Run the same data samples ('num_samples' many) across all the models
     num_samples_processed = 0
+    num_samples = len(train_loader) - 1
     for batch_idx, (data, target) in enumerate(train_loader):
         if args.gpu_id != -1:
             data = data.cuda(args.gpu_id)
+            target = target.cuda(args.gpu_id)
+
         for idx, model in enumerate(models):
             model(data)
         num_samples_processed += 1
+        print(num_samples_processed)
         if num_samples_processed == num_samples:
             break
-
     # Dump the activations for all models onto disk
     if dump_activations and dump_path is not None:
         for idx in range(len(models)):
