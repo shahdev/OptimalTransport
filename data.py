@@ -82,11 +82,11 @@ def get_dataloader(args, unit_batch = False, no_randomness=False):
                                                torchvision.transforms.ToTensor(),
                                            ]))
                 if args.dataset_path != '':
-	                data_train = np.load('%s/data_party%d.npz' % (args.dataset_path, i))
-	                x_train = (data_train['x_train']*255).astype('uint8')
-	                y_train = (data_train['y_train']).astype('int64')
-	                local_dataset.data = x_train
-	                local_dataset.targets = y_train
+                    data_train = np.load('%s/data_party%d.npz' % (args.dataset_path, i))
+                    x_train = (data_train['x_train']*255).astype('uint8')
+                    y_train = (data_train['y_train']).astype('int64')
+                    local_dataset.data = x_train
+                    local_dataset.targets = y_train
 
                 local_train_loader = torch.utils.data.DataLoader(local_dataset, batch_size=bsz[0], shuffle=enable_shuffle)
                 dataloaders.append(local_train_loader)
@@ -97,6 +97,40 @@ def get_dataloader(args, unit_batch = False, no_randomness=False):
                                            ])),
                 batch_size=bsz[1], shuffle=enable_shuffle
             )
+    elif args.dataset.lower() == 'cifar100':
+        dataloaders = []
+        for i in range(args.num_models):                
+            if args.data_augmentation == 1:
+                print("DATA AUGMENTATION")
+                local_dataset = torchvision.datasets.CIFAR100('./data/', train=True, download=args.to_download,
+                                       transform=torchvision.transforms.Compose([
+                                           torchvision.transforms.RandomHorizontalFlip(),
+                                           torchvision.transforms.RandomAffine(0, translate=(0.1, 0.1)),
+                                           torchvision.transforms.ToTensor(),
+                                       ]))
+            else:
+                print("NO DATA AUGMENTATION")
+                local_dataset = torchvision.datasets.CIFAR100('./data/', train=True, download=args.to_download,
+                                       transform=torchvision.transforms.Compose([
+                                           torchvision.transforms.ToTensor(),
+                                       ]))
 
+            if args.dataset_path != '':
+                data_train = np.load('%s/data_party%d.npz' % (args.dataset_path, i))
+                x_train = (data_train['x_train']*255).astype('uint8')
+                y_train = (data_train['y_train']).astype('int64')
+                local_dataset.data = x_train
+                local_dataset.targets = y_train
+
+            local_train_loader = torch.utils.data.DataLoader(local_dataset, batch_size=bsz[0], shuffle=enable_shuffle)
+            dataloaders.append(local_train_loader)
+            
+        test_loader = torch.utils.data.DataLoader(
+            torchvision.datasets.CIFAR10('./data/', train=False, download=args.to_download,
+                                       transform=torchvision.transforms.Compose([
+                                           torchvision.transforms.ToTensor(),
+                                       ])),
+            batch_size=bsz[1], shuffle=enable_shuffle
+        )
 
         return dataloaders, test_loader
