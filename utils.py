@@ -14,6 +14,7 @@ sys.path.append(PATH_TO_VGG)
 import vgg
 import nin
 import partition
+import copy 
 
 def get_timestamp_other():
     import time
@@ -102,7 +103,9 @@ def get_model_activations(args, models, train_loader_array=None, config=None, la
             for idx in range(len(models)):
                 if train_loader_array is not None:
                     unit_batch_train_loader = train_loader_array[idx]
-                    activation, _ = compute_activations.compute_activations(args, models[idx], unit_batch_train_loader, args.act_num_samples, adversary=)                      
+                    local_model = copy.deepcopy(models[idx])
+                    activation, _ = compute_activations.compute_activations(args, local_model, unit_batch_train_loader, args.act_num_samples)
+                    del local_model                      
                     activations[idx] = activation
                     
             # activations = compute_activations.compute_activations_across_models(args, models, unit_batch_train_loader,

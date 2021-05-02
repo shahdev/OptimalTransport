@@ -97,6 +97,8 @@ def get_dataloader(args, unit_batch = False, no_randomness=False):
                                            ])),
                 batch_size=bsz[1], shuffle=enable_shuffle
             )
+        return dataloaders, test_loader
+
     elif args.dataset.lower() == 'cifar100':
         dataloaders = []
         for i in range(args.num_models):                
@@ -126,7 +128,7 @@ def get_dataloader(args, unit_batch = False, no_randomness=False):
             dataloaders.append(local_train_loader)
             
         test_loader = torch.utils.data.DataLoader(
-            torchvision.datasets.CIFAR10('./data/', train=False, download=args.to_download,
+            torchvision.datasets.CIFAR100('./data/', train=False, download=args.to_download,
                                        transform=torchvision.transforms.Compose([
                                            torchvision.transforms.ToTensor(),
                                        ])),

@@ -53,7 +53,7 @@ if __name__ == '__main__':
     for comm_round in range(args.num_comm_rounds):
         args.n_epochs = max(E_min, math.ceil(E0 * args.gamma ** int(comm_round / args.F)))
         if comm_round == 0:
-            args.n_epochs = 75
+            args.n_epochs = 1#75
         print("LOCAL TRAINING EPOCHS : ", args.n_epochs)
         models, accuracies, adv_accuracies, (ut_local_array, vt_local_array) = routines.train_models(args, train_loader_array, test_loader, ut_local_array=ut_local_array, vt_local_array=vt_local_array, ut_global=ut_global, vt_global=vt_global, lb=lb, initial_model=initial_model)
         

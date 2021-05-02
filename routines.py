@@ -72,6 +72,9 @@ def get_trained_model(args, id, random_seed, train_loader, test_loader, ut_local
             checkpoint=torch.load('initialization.pth', map_location=torch.device(device))
         elif args.model_name == 'nin':
             checkpoint = torch.load('initialization_nin.pth', map_location=torch.device(device))
+        elif args.model_name == 'vgg16':
+            checkpoint = torch.load('initialization_vgg11.pth', map_location=torch.device(device))
+
         network.load_state_dict(checkpoint)
         print("SAME INITIALIZATION")
 
@@ -121,6 +124,7 @@ def get_trained_model(args, id, random_seed, train_loader, test_loader, ut_local
         train(args, network, optimizer, cifar_criterion, train_loader, 
             ut_local, ut_global, vt_local, vt_global, lb,
             log_dict, epoch, model_id=str(id), adversary = adversary)
+
     acc = test(args, network, test_loader, log_dict)
     adv_acc = 0.0
     if args.adversarial_training != 0:

@@ -12,8 +12,10 @@ sys.path.append(PATH_TO_CIFAR)
 import train as cifar_train
 import hyperparameters.vgg11_cifar10_baseline as vgg_hyperparams
 import torch
-
-
+from advertorch.attacks import LinfPGDAttack
+from advertorch.context import ctx_noparamgrad_and_eval
+import torch.nn as nn
+import copy
 
 ensemble_root_dir = "./cifar_models/"
 ensemble_experiment = "exp_2019-08-24_02-20-26"
@@ -44,8 +46,8 @@ def compute_activations(args, model, train_loader, num_samples, adversary=None):
     # over number of samples processed
     def get_activation(name):
         def hook(model, input, output):
-            print("num of samples seen before", num_samples_processed)
             # print("output is ", output.detach())
+            print(num_samples_processed)
             if name not in activation:
                 activation[name] = output.detach()
             else:
@@ -56,8 +58,9 @@ def compute_activations(args, model, train_loader, num_samples, adversary=None):
         return hook
 
     if adversary is None:
+        evasion_model = copy.deepcopy(model)
         adversary = LinfPGDAttack(
-        model, loss_fn=nn.CrossEntropyLoss(reduction="sum"), eps=8.0 / 255.0,
+        evasion_model, loss_fn=nn.CrossEntropyLoss(reduction="sum"), eps=8.0 / 255.0,
         nb_iter=10, eps_iter=2.0 / 255.0, rand_init=True, clip_min=0.0,
         clip_max=1.0, targeted=False)
 
@@ -84,6 +87,8 @@ def compute_activations(args, model, train_loader, num_samples, adversary=None):
             num_samples_processed += 1
             if num_samples_processed == num_samples:
                 break
+    del adversary
+
     return activation, None #, datapoints
 
 def save_activations(idx, activation, dump_path):

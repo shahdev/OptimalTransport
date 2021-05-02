@@ -85,7 +85,7 @@ def get_parser():
 
     parser.add_argument('--to-download', action='store_true', help='download the dataset (typically mnist)')
     parser.add_argument('--disable_bias', action='store_false', help='disable bias in the neural network layers')
-    parser.add_argument('--dataset', default='mnist', type=str, choices=['mnist', 'Cifar10'],
+    parser.add_argument('--dataset', default='mnist', type=str, choices=['mnist', 'Cifar10', 'Cifar100'],
                         help='dataset to use for the task')
     parser.add_argument('--num-models', default=2, type=int, help='number of models to ensemble')
     parser.add_argument('--gamma', default=1, type=float, help='decay factor')
