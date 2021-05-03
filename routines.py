@@ -14,8 +14,20 @@ from advertorch.attacks import LinfPGDAttack
 from advertorch.context import ctx_noparamgrad_and_eval
 
 # Compute fisher matrix for FedCurvAT; on adversarially perturbed local data
-def compute_fisher_matrix(args, network, optimizer, cifar_criterion, train_loader, adversary=None):
+def compute_fisher_matrix(args, network, train_loader, optimizer=None, cifar_criterion=None, adversary=None):
     network.eval()
+    if optimizer is None:
+        optimizer = optim.SGD(network.parameters(), lr=args.learning_rate,
+                              momentum=args.momentum, weight_decay=1e-4)
+
+    if adversary is None:
+        adversary = LinfPGDAttack(
+            network, loss_fn=nn.CrossEntropyLoss(reduction="sum"), eps=8.0 / 255.0,
+            nb_iter=10, eps_iter=2.0 / 255.0, rand_init=True, clip_min=0.0,
+            clip_max=1.0, targeted=False)
+
+    if cifar_criterion is None:
+        cifar_criterion = torch.nn.CrossEntropyLoss()
 
     ut_local = {}
     vt_local = {}
@@ -138,7 +150,7 @@ def get_trained_model(args, id, random_seed, train_loader, test_loader, ut_local
         ut_global[n] = ut_global[n].cpu()
         vt_global[n] = vt_global[n].cpu()
 
-    ut_local_new, vt_local_new = compute_fisher_matrix(args, network, optimizer, cifar_criterion, train_loader, adversary=adversary)
+    ut_local_new, vt_local_new = compute_fisher_matrix(args, network, train_loader, optimizer=optimizer, cifar_criterion=cifar_criterion, adversary=adversary)
     return network, acc, adv_acc, (ut_local_new, vt_local_new)
 
 def check_freezed_params(model, frozen):

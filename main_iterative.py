@@ -98,7 +98,7 @@ if __name__ == '__main__':
         st_time = time.perf_counter()
         
         geometric_acc1, geometric_model1 = wasserstein_ensemble.geometric_ensembling_modularized_compare(args, [models[0], models[1]], train_loader_array, test_loader, activations, mode='2_networks')
-        geometric_acc, geometric_model = wasserstein_ensemble.geometric_ensembling_modularized_compare(args, models, train_loader_array, test_loader, activations, mode='all_networks')
+        geometric_acc, geometric_model, local_models = wasserstein_ensemble.geometric_ensembling_modularized_compare(args, models, train_loader_array, test_loader, activations, mode='all_networks')
 
         log_dict = {}
         geometric_adv_acc = routines.test_adv(args, geometric_model, test_loader, log_dict) 
@@ -152,5 +152,18 @@ if __name__ == '__main__':
         #else:
         #    initial_model = naive_model
         #    print("NAIVE AVERAGE FUSION")
+
+        ut_local_array = []
+        vt_local_array = []
+        for idx in range(len(local_models)):
+            ut_local, vt_local = routines.compute_fisher_matrix(args, local_models[idx], train_loader_array[idx])
+            ut_local_array.append(ut_local)
+            vt_local_array.append(vt_local)
+
+        ut_global = {}
+        vt_global = {}
+        for n in ut_local_array[0]:
+            ut_global[n] = torch.mean(torch.stack([x[n] for x in ut_local_array]), axis=0)
+            vt_global[n] = torch.mean(torch.stack([x[n] for x in vt_local_array]), axis=0)
 
         torch.save(initial_model.state_dict(),  '{}/global_model_{}.pth'.format(args.save_dir, comm_round))

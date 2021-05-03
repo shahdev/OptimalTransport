@@ -235,13 +235,17 @@ def get_wassersteinized_layers_modularized(args, networks, activations=None, eps
         aligned_models.append(aligned_layers)        
     
     for layer_num in range(len(aligned_models[0])):
-        geometric_fc = sum([x[layer_num] for x in aligned_models])/num_models
         layer_shape = layer_shapes[layer_num]
-        if len(layer_shape) > 2 and layer_shape != geometric_fc.shape:
-            geometric_fc = geometric_fc.view(layer_shape)
+        for x in aligned_models:
+            if len(layer_shape) > 2:
+                x[layer_num] = x[layer_num].view(layer_shape)
+
+        geometric_fc = sum([x[layer_num] for x in aligned_models])/num_models
+        # if len(layer_shape) > 2 and layer_shape != geometric_fc.shape:
+        #     geometric_fc = geometric_fc.view(layer_shape)
         avg_aligned_layers.append(geometric_fc)
 
-    return avg_aligned_layers
+    return avg_aligned_layers, aligned_models
 
 
 
@@ -425,18 +429,6 @@ def get_wassersteinized_layers_modularized_2networks(args, networks, activations
         if is_conv and layer_shape != geometric_fc.shape:
             geometric_fc = geometric_fc.view(layer_shape)
         avg_aligned_layers.append(geometric_fc)
-
-        # get the performance of the model 0 aligned with respect to the model 1
-        if args.eval_aligned:
-            if is_conv and layer_shape != t_fc0_model.shape:
-                t_fc0_model = t_fc0_model.view(layer_shape)
-            model0_aligned_layers.append(t_fc0_model)
-            _, acc = update_model(args, networks[0], model0_aligned_layers, test=True,
-                                  test_loader=test_loader, idx=0)
-            print("For layer idx {}, accuracy of the updated model is {}".format(idx, acc))
-            setattr(args, 'model0_aligned_acc_layer_{}'.format(str(idx)), acc)
-            if idx == (num_layers - 1):
-                setattr(args, 'model0_aligned_acc', acc)
 
     return avg_aligned_layers
 
@@ -1091,9 +1083,10 @@ def geometric_ensembling_modularized(args, networks, train_loader_array, test_lo
 def geometric_ensembling_modularized_compare(args, networks, train_loader_array, test_loader, activations=None, mode='2_networks', base_model=0):
     if mode == '2_networks':
         avg_aligned_layers = get_wassersteinized_layers_modularized_2networks(args, networks, activations, test_loader=test_loader)
+        return get_network_from_param_list(args, avg_aligned_layers, test_loader)
     else:
-        avg_aligned_layers = get_wassersteinized_layers_modularized(args, networks, activations, test_loader=test_loader, base_model=base_model)
-
-    return get_network_from_param_list(args, avg_aligned_layers, test_loader)
+        avg_aligned_layers, aligned_models = get_wassersteinized_layers_modularized(args, networks, activations, test_loader=test_loader, base_model=base_model)
+        return get_network_from_param_list(args, avg_aligned_layers, test_loader), aligned_models
+    
 
 
