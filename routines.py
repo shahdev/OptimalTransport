@@ -59,7 +59,7 @@ def penalty(network, ut_local, ut_global, vt_local, vt_global, lb, weight_coeffi
     #print(l2, l3)
     return l2 + l3
 
-def get_trained_model(args, id, random_seed, train_loader, test_loader, ut_local=None, ut_global=None, vt_local=None, vt_global=None, lb=0.0, network=None):
+def get_trained_model(args, id, random_seed, train_loader, test_loader, ut_local=None, ut_global=None, vt_local=None, vt_global=None, lb=0.0, network=None, comm_round=0):
     torch.backends.cudnn.enabled = False
     torch.manual_seed(random_seed)
     if args.gpu_id!=-1:
@@ -73,7 +73,7 @@ def get_trained_model(args, id, random_seed, train_loader, test_loader, ut_local
         elif args.model_name == 'nin':
             checkpoint = torch.load('initialization_nin.pth', map_location=torch.device(device))
         elif args.model_name == 'vgg16':
-            checkpoint = torch.load('initialization_vgg11.pth', map_location=torch.device(device))
+            checkpoint = torch.load('initialization_vgg11_batchnorm.pth', map_location=torch.device(device))
 
         network.load_state_dict(checkpoint)
         print("SAME INITIALIZATION")
@@ -124,13 +124,13 @@ def get_trained_model(args, id, random_seed, train_loader, test_loader, ut_local
         train(args, network, optimizer, cifar_criterion, train_loader, 
             ut_local, ut_global, vt_local, vt_global, lb,
             log_dict, epoch, model_id=str(id), adversary = adversary)
-
-    acc = test(args, network, test_loader, log_dict)
+        if epoch%5==0:
+            acc = test(args, network, test_loader, log_dict)
     adv_acc = 0.0
     if args.adversarial_training != 0:
         adv_acc = test_adv(args, network, test_loader, log_dict, adversary=adversary) 
-        #torch.save(network.state_dict(), '{}/model_{}_{}_{}.pth'.format(args.save_dir, args.model_name, str(id), epoch))
-        #torch.save(optimizer.state_dict(), '{}/optimizer_{}_{}_{}.pth'.format(args.save_dir, args.model_name, str(id), epoch))
+    torch.save(network.state_dict(), '{}/model_{}_{}_{}.pth'.format(args.save_dir, args.model_name, str(id), comm_round))
+    #torch.save(optimizer.state_dict(), '{}/optimizer_{}_{}_{}.pth'.format(args.save_dir, args.model_name, str(id), epoch))
 
     for n in ut_local:
         ut_local[n] = ut_local[n].cpu()
@@ -445,7 +445,7 @@ def train_data_separated_models(args, local_train_loaders, local_test_loaders, t
     return networks, accuracies, local_accuracies
 
 
-def train_models(args, train_loader_array, test_loader, ut_local_array=None, vt_local_array=None, ut_global=None, vt_global=None, lb=0.0, initial_model=None, checkpoint_models=None):
+def train_models(args, train_loader_array, test_loader, ut_local_array=None, vt_local_array=None, ut_global=None, vt_global=None, lb=0.0, initial_model=None, checkpoint_models=None, comm_round=0):
     networks = []
     accuracies = []
     adv_accuracies = []
@@ -457,15 +457,15 @@ def train_models(args, train_loader_array, test_loader, ut_local_array=None, vt_
             network = checkpoint_models[i]
             network, acc, adv_acc, (ut_local_new, vt_local_new) = get_trained_model(args, i, i, train_loader_array[i], test_loader,
                 ut_local=ut_local_array[i], vt_local=vt_local_array[i], ut_global=ut_global, vt_global=vt_global, lb=lb,
-                network=network)
+                network=network, comm_round=comm_round)
         elif initial_model is not None:
             network = copy.deepcopy(initial_model)
             network, acc, adv_acc, (ut_local_new, vt_local_new) = get_trained_model(args, i, i, train_loader_array[i], test_loader, 
                 ut_local=ut_local_array[i], vt_local=vt_local_array[i], ut_global=ut_global, vt_global=vt_global, lb=lb,
-                network=network)
+                network=network, comm_round=comm_round)
         else:
             # ut arrays are also None
-            network, acc, adv_acc, (ut_local_new, vt_local_new) = get_trained_model(args, i, i, train_loader_array[i], test_loader)
+            network, acc, adv_acc, (ut_local_new, vt_local_new) = get_trained_model(args, i, i, train_loader_array[i], test_loader, comm_round=comm_round)
         networks.append(network)
         accuracies.append(acc)
         adv_accuracies.append(adv_acc)

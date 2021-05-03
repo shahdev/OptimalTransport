@@ -50,13 +50,22 @@ if __name__ == '__main__':
     gamma = args.gamma
     F = args.F
     E_min = args.E_min
+    checkpoint_models = None
     for comm_round in range(args.num_comm_rounds):
         args.n_epochs = max(E_min, math.ceil(E0 * args.gamma ** int(comm_round / args.F)))
-        if comm_round == 0:
-            args.n_epochs = 75
         print("LOCAL TRAINING EPOCHS : ", args.n_epochs)
-        models, accuracies, adv_accuracies, (ut_local_array, vt_local_array) = routines.train_models(args, train_loader_array, test_loader, ut_local_array=ut_local_array, vt_local_array=vt_local_array, ut_global=ut_global, vt_global=vt_global, lb=lb, initial_model=initial_model)
-        
+        models, accuracies, adv_accuracies, (ut_local_array, vt_local_array) = routines.train_models(args, train_loader_array, test_loader, ut_local_array=ut_local_array, vt_local_array=vt_local_array, ut_global=ut_global, vt_global=vt_global, lb=lb, initial_model=initial_model, checkpoint_models=checkpoint_models)
+       	checkpoint_models = models 
+        device='cuda' 
+        checkpoint = torch.load('vgg_5clients_iid_effectE_E0=50_gamma_1e-1_F_5_lb0/model_0.pth', map_location=torch.device(device))
+        models[0].load_state_dict(checkpoint)
+        checkpoint = torch.load('vgg_5clients_iid_effectE_E0=50_gamma_1e-1_F_5_lb0/model_1.pth', map_location=torch.device(device))
+        models[1].load_state_dict(checkpoint)
+        checkpoint = torch.load('vgg_5clients_iid_effectE_E0=50_gamma_1e-1_F_5_lb0/model_2.pth', map_location=torch.device(device))
+        models[2].load_state_dict(checkpoint)
+        checkpoint = torch.load('vgg_5clients_iid_effectE_E0=50_gamma_1e-1_F_5_lb0/model_3.pth', map_location=torch.device(device))
+        models[3].load_state_dict(checkpoint)
+
         ut_global = {}
         vt_global = {}
         for n in ut_local_array[0]:
@@ -72,6 +81,7 @@ if __name__ == '__main__':
         # second_config is not needed here as well, since it's just used for the dataloader!
         print("Activation Timer start")
         st_time = time.perf_counter()
+        #activations = utils.get_model_activations(args, models, config=config)
         activations = utils.get_model_activations(args, models, train_loader_array=train_loader_array, config=config)
         end_time = time.perf_counter()
         setattr(args, 'activation_time', end_time - st_time)
@@ -98,21 +108,24 @@ if __name__ == '__main__':
 
         print("Timer start")
         st_time = time.perf_counter()
-
-        geometric_acc, geometric_model = wasserstein_ensemble.geometric_ensembling_modularized(args, models, train_loader_array, test_loader, activations)
         log_dict = {}
-        geometric_adv_acc = routines.test_adv(args, geometric_model, test_loader, log_dict) 
+
+        geometric_acc1, geometric_model1 = wasserstein_ensemble.geometric_ensembling_modularized_compare(args, [models[0], models[1]], train_loader_array, test_loader, activations, mode='2_networks')
+        geometric_acc2, geometric_model2 = wasserstein_ensemble.geometric_ensembling_modularized_compare(args, [models[2], models[3]], train_loader_array, test_loader, activations, mode='2_networks')
+        geometric_acc3, geometric_model3 = wasserstein_ensemble.geometric_ensembling_modularized_compare(args, [geometric_model1, geometric_model2], train_loader_array, test_loader, activations, mode='2_networks')
+        geometric_acc_all, geometric_model_all = wasserstein_ensemble.geometric_ensembling_modularized_compare(args, models, train_loader_array, test_loader, activations, mode='all_networks')
+        import pdb; pdb.set_trace()
         end_time = time.perf_counter()
         print("Timer ends")
         setattr(args, 'geometric_time', end_time - st_time)
-        args.params_geometric = utils.get_model_size(geometric_model)
+        args.params_geometric = utils.get_model_size(geometric_model1)
 
         print("Time taken for geometric ensembling is {} seconds".format(str(end_time - st_time)))
         # run baselines
 
         print("------- Naive ensembling of weights -------")
         naive_acc, naive_model = baseline.naive_ensembling(args, models, test_loader)
-        naive_adv_acc = routines.test_adv(args, naive_model, test_loader, log_dict) 
+        naive_adv_acc = routines.test_adv(args, naive_model, test_loader, log_dict)
         final_results_dic = {}
         if args.save_result_file != '':            
             results_dic = {}
@@ -120,15 +133,15 @@ if __name__ == '__main__':
 
             for idx, acc in enumerate(accuracies):
                 results_dic['model{}_acc'.format(idx)] = acc
-
             for idx, acc in enumerate(adv_accuracies):
                 results_dic['model{}_adv_acc'.format(idx)] = acc
 
-            results_dic['geometric_acc'] = geometric_acc
-            results_dic['geometric_adv_acc'] = geometric_adv_acc
+            results_dic['geometric_acc1'] = geometric_acc1
+            results_dic['geometric_acc2'] = geometric_acc2
+            results_dic['geometric_acc3'] = geometric_acc3
             results_dic['naive_acc'] = naive_acc
             results_dic['naive_adv_acc'] = naive_adv_acc
-            
+            results_dic['geometric_acc_all'] = geometric_acc_all
             if args.eval_aligned:
                 results_dic['model0_aligned'] = args.model0_aligned_acc
 
@@ -144,13 +157,3 @@ if __name__ == '__main__':
             print('----- Saved results at {} ------'.format(args.save_result_file))
             print(results_dic)
 
-
-        print("FYI: the parameters were: \n", args)
-        if geometric_acc > naive_acc and geometric_adv_acc > naive_adv_acc:
-            initial_model = geometric_model #Set the model for next round of training
-            print("OPTIMAL TRANSPORT FUSION")
-        else:
-            initial_model = naive_model
-            print("NAIVE AVERAGE FUSION")
-
-        torch.save(initial_model.state_dict(),  '{}/global_model_{}.pth'.format(args.save_dir, comm_round))

@@ -99,8 +99,13 @@ if __name__ == '__main__':
         print("Timer start")
         st_time = time.perf_counter()
         log_dict = {}
-        geometric_acc, geometric_model = wasserstein_ensemble.geometric_ensembling_modularized(args, models, train_loader_array, test_loader, activations)
+
+        geometric_acc, geometric_model = wasserstein_ensemble.geometric_ensembling_modularized_compare(args, models, train_loader_array, test_loader, activations, mode='2_networks')
         geometric_adv_acc = routines.test_adv(args, geometric_model, test_loader, log_dict) 
+
+        geometric_acc_all, geometric_model_all = wasserstein_ensemble.geometric_ensembling_modularized_compare(args, models, train_loader_array, test_loader, activations, mode='all_networks')
+        geometric_adv_acc_all = routines.test_adv(args, geometric_model, test_loader, log_dict)
+
         end_time = time.perf_counter()
         print("Timer ends")
         setattr(args, 'geometric_time', end_time - st_time)
@@ -126,7 +131,7 @@ if __name__ == '__main__':
             results_dic['naive_acc'] = naive_acc
             results_dic['geometric_adv_acc'] = geometric_adv_acc
             results_dic['naive_adv_acc'] = naive_adv_acc
-
+            results_dic['geometric_acc_all'] = geometric_acc_all
             if args.eval_aligned:
                 results_dic['model0_aligned'] = args.model0_aligned_acc
 

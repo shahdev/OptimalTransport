@@ -157,6 +157,7 @@ def _get_config(args):
 
     import hyperparameters.vgg9_cifar10_baseline as cifar10_vgg9_hyperparams  # vgg9_hyperparams 
     import hyperparameters.nin as nin_hyperparams
+    import hyperparameters.vgg16 as vgg16_hyperparams
     config = None
     second_config = None
 
@@ -179,6 +180,8 @@ def _get_config(args):
             config = cifar10_vgg9_hyperparams.config
         elif args.model_name == 'nin':
             config = nin_hyperparams.config
+        elif args.model_name == 'vgg16':
+            config = vgg16_hyperparams.config
         else:
             raise NotImplementedError
 
