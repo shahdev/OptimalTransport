@@ -42,7 +42,8 @@ def get_histogram(args, idx, cardinality, layer_name, activations=None, return_n
         else:
             return torch.softmax(unnormalized_weights / args.softmax_temperature, dim=0)
 
-def get_wassersteinized_layers_modularized(args, networks, activations=None, eps=1e-7, test_loader=None):
+
+def get_wassersteinized_layers_modularized(args, networks, activations=None, eps=1e-7, test_loader=None, base_model=0):
     '''
     Two neural networks that have to be averaged in geometric manner (i.e. layerwise).
     The 1st network is aligned with respect to the other via wasserstein distance.
@@ -60,6 +61,13 @@ def get_wassersteinized_layers_modularized(args, networks, activations=None, eps
 
     avg_aligned_layers = []
     # cumulative_T_var = None
+    T_var = None
+    # print(list(networks[0].parameters()))
+    previous_layer_shape = None
+    ground_metric_object = GroundMetric(args)
+
+    if args.eval_aligned:
+        model0_aligned_layers = []
 
     if args.gpu_id==-1:
         device = torch.device('cpu')
@@ -71,21 +79,14 @@ def get_wassersteinized_layers_modularized(args, networks, activations=None, eps
     num_models = len(networks)
 
     aligned_models = []
-    for k in range(num_models-1):
+
+    for k in range(0, num_models):
         aligned_layers = []
         orig_model = []
         layer_shapes = []
-        T_var = None
-        # print(list(networks[0].parameters()))
-        previous_layer_shape = None
-        ground_metric_object = GroundMetric(args)
-
-        if args.eval_aligned:
-            model0_aligned_layers = []
-
-        print("ALIGNING MODEL %d"%k)
         for idx, ((layer0_name, fc_layer0_weight), (layer1_name, fc_layer1_weight)) in \
-                enumerate(zip(networks[k].named_parameters(), networks[num_models-1].named_parameters())):
+                enumerate(zip(networks[k].named_parameters(), networks[base_model].named_parameters())):
+
             assert fc_layer0_weight.shape == fc_layer1_weight.shape
             print("Previous layer shape is ", previous_layer_shape)
             previous_layer_shape = fc_layer1_weight.shape
@@ -149,14 +150,13 @@ def get_wassersteinized_layers_modularized(args, networks, activations=None, eps
                     # M = cost_matrix(aligned_wt, fc_layer1_weight)
                     M = ground_metric_object.process(aligned_wt, fc_layer1_weight)
                     print("ground metric is ", M)
-                if args.skip_last_layer and idx == (num_layers - 1):
+
+                if idx == (num_layers - 1):
                     print("Simple averaging of last layer weights. NO transport map needs to be computed")
-                    if args.ensemble_step != 0.5:
-                        avg_aligned_layers.append((1 - args.ensemble_step) * aligned_wt +
-                                              args.ensemble_step * fc_layer1_weight)
-                    else:
-                        avg_aligned_layers.append((aligned_wt + fc_layer1_weight)/2)
-                    return avg_aligned_layers
+                    aligned_layers.append(aligned_wt)
+                    layer_shapes.append(layer_shape)
+                    import pdb; pdb.set_trace()
+                    break
 
             if args.importance is None or (idx == num_layers -1):
                 mu = get_histogram(args, 0, mu_cardinality, layer0_name)
@@ -231,19 +231,20 @@ def get_wassersteinized_layers_modularized(args, networks, activations=None, eps
                 t_fc0_model = torch.matmul(T_var.t(), fc_layer0_weight_data.view(fc_layer0_weight_data.shape[0], -1))
 
             aligned_layers.append(t_fc0_model)
-            orig_model.append(fc_layer1_weight_data.view(fc_layer1_weight_data.shape[0], -1))
             layer_shapes.append(layer_shape) 
 
         aligned_models.append(aligned_layers)        
     
     for layer_num in range(len(aligned_models[0])):
-        geometric_fc = (sum([x[layer_num] for x in aligned_models]) + orig_model[layer_num])/num_models
+        geometric_fc = sum([x[layer_num] for x in aligned_models])/num_models
         layer_shape = layer_shapes[layer_num]
         if len(layer_shape) > 2 and layer_shape != geometric_fc.shape:
             geometric_fc = geometric_fc.view(layer_shape)
         avg_aligned_layers.append(geometric_fc)
 
     return avg_aligned_layers
+
+
 
 def get_wassersteinized_layers_modularized_2networks(args, networks, activations=None, eps=1e-7, test_loader=None):
     '''
@@ -1088,11 +1089,11 @@ def geometric_ensembling_modularized(args, networks, train_loader_array, test_lo
     return get_network_from_param_list(args, avg_aligned_layers, test_loader)
 
 
-def geometric_ensembling_modularized_compare(args, networks, train_loader_array, test_loader, activations=None, mode='2_networks'):
+def geometric_ensembling_modularized_compare(args, networks, train_loader_array, test_loader, activations=None, mode='2_networks', base_model=0):
     if mode == '2_networks':
         avg_aligned_layers = get_wassersteinized_layers_modularized_2networks(args, networks, activations, test_loader=test_loader)
     else:
-        avg_aligned_layers = get_wassersteinized_layers_modularized(args, networks, activations, test_loader=test_loader)
+        avg_aligned_layers = get_wassersteinized_layers_modularized(args, networks, activations, test_loader=test_loader, base_model=base_model)
 
     return get_network_from_param_list(args, avg_aligned_layers, test_loader)
 
