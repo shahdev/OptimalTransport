@@ -155,7 +155,6 @@ def get_wassersteinized_layers_modularized(args, networks, activations=None, eps
                     print("Simple averaging of last layer weights. NO transport map needs to be computed")
                     aligned_layers.append(aligned_wt)
                     layer_shapes.append(layer_shape)
-                    import pdb; pdb.set_trace()
                     break
 
             if args.importance is None or (idx == num_layers -1):

@@ -114,7 +114,6 @@ if __name__ == '__main__':
         geometric_acc2, geometric_model2 = wasserstein_ensemble.geometric_ensembling_modularized_compare(args, [models[2], models[3]], train_loader_array, test_loader, activations, mode='2_networks')
         geometric_acc3, geometric_model3 = wasserstein_ensemble.geometric_ensembling_modularized_compare(args, [geometric_model1, geometric_model2], train_loader_array, test_loader, activations, mode='2_networks')
         geometric_acc_all, geometric_model_all = wasserstein_ensemble.geometric_ensembling_modularized_compare(args, models, train_loader_array, test_loader, activations, mode='all_networks')
-        import pdb; pdb.set_trace()
         end_time = time.perf_counter()
         print("Timer ends")
         setattr(args, 'geometric_time', end_time - st_time)

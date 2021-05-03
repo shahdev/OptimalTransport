@@ -52,10 +52,8 @@ if __name__ == '__main__':
     E_min = args.E_min
     for comm_round in range(args.num_comm_rounds):
         args.n_epochs = max(E_min, math.ceil(E0 * args.gamma ** int(comm_round / args.F)))
-        if comm_round == 0:
-            args.n_epochs = 75
         print("LOCAL TRAINING EPOCHS : ", args.n_epochs)
-        models, accuracies, adv_accuracies, (ut_local_array, vt_local_array) = routines.train_models(args, train_loader_array, test_loader, ut_local_array=ut_local_array, vt_local_array=vt_local_array, ut_global=ut_global, vt_global=vt_global, lb=lb, initial_model=initial_model)
+        models, accuracies, adv_accuracies, (ut_local_array, vt_local_array) = routines.train_models(args, train_loader_array, test_loader, ut_local_array=ut_local_array, vt_local_array=vt_local_array, ut_global=ut_global, vt_global=vt_global, lb=lb, initial_model=initial_model, comm_round=comm_round)
         
         ut_global = {}
         vt_global = {}
@@ -98,8 +96,10 @@ if __name__ == '__main__':
 
         print("Timer start")
         st_time = time.perf_counter()
+        
+        geometric_acc1, geometric_model1 = wasserstein_ensemble.geometric_ensembling_modularized_compare(args, [models[0], models[1]], train_loader_array, test_loader, activations, mode='2_networks')
+        geometric_acc, geometric_model = wasserstein_ensemble.geometric_ensembling_modularized_compare(args, models, train_loader_array, test_loader, activations, mode='all_networks')
 
-        geometric_acc, geometric_model = wasserstein_ensemble.geometric_ensembling_modularized(args, models, train_loader_array, test_loader, activations)
         log_dict = {}
         geometric_adv_acc = routines.test_adv(args, geometric_model, test_loader, log_dict) 
         end_time = time.perf_counter()
@@ -128,7 +128,7 @@ if __name__ == '__main__':
             results_dic['geometric_adv_acc'] = geometric_adv_acc
             results_dic['naive_acc'] = naive_acc
             results_dic['naive_adv_acc'] = naive_adv_acc
-            
+            results_dic['geometric_acc1'] = geometric_acc1
             if args.eval_aligned:
                 results_dic['model0_aligned'] = args.model0_aligned_acc
 
@@ -146,11 +146,11 @@ if __name__ == '__main__':
 
 
         print("FYI: the parameters were: \n", args)
-        if geometric_acc > naive_acc and geometric_adv_acc > naive_adv_acc:
-            initial_model = geometric_model #Set the model for next round of training
-            print("OPTIMAL TRANSPORT FUSION")
-        else:
-            initial_model = naive_model
-            print("NAIVE AVERAGE FUSION")
+        #if geometric_acc > naive_acc and geometric_adv_acc > naive_adv_acc:
+        initial_model = geometric_model #Set the model for next round of training
+        print("OPTIMAL TRANSPORT FUSION")
+        #else:
+        #    initial_model = naive_model
+        #    print("NAIVE AVERAGE FUSION")
 
         torch.save(initial_model.state_dict(),  '{}/global_model_{}.pth'.format(args.save_dir, comm_round))
