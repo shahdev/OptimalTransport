@@ -35,7 +35,6 @@ def naive_ensembling(args, networks, test_loader):
     log_dict = {}
     log_dict['test_losses'] = []
     # log_dict['test_counter'] = [i * len(train_loader.dataset) for i in range(args.n_epochs + 1)]
-    routines.test(args, ensemble_network, test_loader, log_dict)
     # set the weights of the ensembled network
     for idx, (name, param) in enumerate(ensemble_network.state_dict().items()):
         ensemble_network.state_dict()[name].copy_(avg_pars[idx].data)

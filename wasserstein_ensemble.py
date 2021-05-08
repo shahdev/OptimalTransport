@@ -85,7 +85,6 @@ def get_wassersteinized_layers_modularized(args, networks, activations=None, eps
 
         if args.eval_aligned:
             model0_aligned_layers = []
-
         for idx, ((layer0_name, fc_layer0_weight), (layer1_name, fc_layer1_weight)) in \
                 enumerate(zip(networks[k].named_parameters(), networks[base_model].named_parameters())):
 
@@ -99,7 +98,8 @@ def get_wassersteinized_layers_modularized(args, networks, activations=None, eps
             # mu = np.ones(fc_layer0_weight.shape[0])/fc_layer0_weight.shape[0]
             # nu = np.ones(fc_layer1_weight.shape[0])/fc_layer1_weight.shape[0]
             if idx < fuse_layer_start_idx:
-                t_fc0_model = fc_layer0_weight_data
+                t_fc0_model = fc_layer0_weight.data
+                layer_shape = fc_layer0_weight.shape
             else:
                 layer_shape = fc_layer0_weight.shape
                 if len(layer_shape) > 2:
@@ -155,11 +155,11 @@ def get_wassersteinized_layers_modularized(args, networks, activations=None, eps
                         M = ground_metric_object.process(aligned_wt, fc_layer1_weight)
                         print("ground metric is ", M)
 
-                    if idx == (num_layers - 1):
-                        print("Simple averaging of last layer weights. NO transport map needs to be computed")
-                        aligned_layers.append(aligned_wt)
-                        layer_shapes.append(layer_shape)
-                        break
+                if idx == (num_layers - 1):
+                    print("Simple averaging of last layer weights. NO transport map needs to be computed")
+                    aligned_layers.append(aligned_wt)
+                    layer_shapes.append(layer_shape)
+                    break
 
                 if args.importance is None or (idx == num_layers -1):
                     mu = get_histogram(args, 0, mu_cardinality, layer0_name)
@@ -603,7 +603,7 @@ def get_network_from_param_list(args, param_list, test_loader):
 
     return acc, new_network
 
-def geometric_ensembling_modularized(args, networks, train_loader_array, test_loader, activations=None, fuse_layer_start_idx=0):
+def geometric_ensembling_modularized(args, networks, train_loader_array, test_loader, activations=None, base_model=0, fuse_layer_start_idx=0):
     
     avg_aligned_layers, aligned_models = get_wassersteinized_layers_modularized(args, networks, activations, 
         test_loader=test_loader, base_model=base_model, fuse_layer_start_idx=fuse_layer_start_idx)

@@ -122,4 +122,4 @@ if __name__ == '__main__':
         print("FYI: the parameters were: \n", args)
 
         initial_model = naive_model #Set the model for next round of training
-        torch.save(initial_model.state_dict(),  '{}/global_model_{}.pth'.format(args.save_dir, comm_round))
+        #torch.save(initial_model.state_dict(),  '{}/global_model_{}.pth'.format(args.save_dir, comm_round))

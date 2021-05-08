@@ -5,13 +5,12 @@ import torch.nn as nn
 # Taken from https://github.com/kuangliu/pytorch-cifar
 
 cfg = {
-    'VGG16': [64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M']
-    #'VGG16': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],
+    'VGG16': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],
 }
 
 
 class VGG16(nn.Module):
-    def __init__(self, vgg_name='VGG16', num_classes=100, batch_norm=False, bias=False, relu_inplace=True):
+    def __init__(self, vgg_name='VGG16', num_classes=100, batch_norm=True, bias=False, relu_inplace=True):
         super(VGG16, self).__init__()
         self.batch_norm= batch_norm
         self.bias = bias

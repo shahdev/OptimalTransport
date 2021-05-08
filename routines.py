@@ -83,10 +83,10 @@ def get_trained_model(args, id, random_seed, train_loader, test_loader, ut_local
         if args.model_name == 'vgg9':
             checkpoint=torch.load('initialization.pth', map_location=torch.device(device))
         elif args.model_name == 'nin':
-            checkpoint = torch.load('initialization_nin.pth', map_location=torch.device(device))
+            checkpoint = torch.load('initialization_nin_bias.pth', map_location=torch.device(device))
         elif args.model_name == 'vgg16':
             checkpoint = torch.load('initialization_vgg16_batchnorm.pth', map_location=torch.device(device))
-
+        
         network.load_state_dict(checkpoint)
         print("SAME INITIALIZATION")
     params = {n: p for n, p in network.named_parameters() if p.requires_grad}
