@@ -1086,7 +1086,8 @@ def geometric_ensembling_modularized_compare(args, networks, train_loader_array,
         return get_network_from_param_list(args, avg_aligned_layers, test_loader)
     else:
         avg_aligned_layers, aligned_models = get_wassersteinized_layers_modularized(args, networks, activations, test_loader=test_loader, base_model=base_model)
-        return get_network_from_param_list(args, avg_aligned_layers, test_loader), aligned_models
+        acc, new_network = get_network_from_param_list(args, avg_aligned_layers, test_loader)
+        return acc, new_network, aligned_models
     
 
 

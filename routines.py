@@ -85,11 +85,10 @@ def get_trained_model(args, id, random_seed, train_loader, test_loader, ut_local
         elif args.model_name == 'nin':
             checkpoint = torch.load('initialization_nin.pth', map_location=torch.device(device))
         elif args.model_name == 'vgg16':
-            checkpoint = torch.load('initialization_vgg11_batchnorm.pth', map_location=torch.device(device))
+            checkpoint = torch.load('initialization_vgg16_batchnorm.pth', map_location=torch.device(device))
 
         network.load_state_dict(checkpoint)
         print("SAME INITIALIZATION")
-
     params = {n: p for n, p in network.named_parameters() if p.requires_grad}
     
     if ut_local is None:
@@ -136,8 +135,8 @@ def get_trained_model(args, id, random_seed, train_loader, test_loader, ut_local
         train(args, network, optimizer, cifar_criterion, train_loader, 
             ut_local, ut_global, vt_local, vt_global, lb,
             log_dict, epoch, model_id=str(id), adversary = adversary)
-        #if epoch%5==0:
-        #    acc = test(args, network, test_loader, log_dict)
+        if epoch%10==0:
+            acc = test(args, network, test_loader, log_dict)
     adv_acc = 0.0
     if args.adversarial_training != 0:
         adv_acc = test_adv(args, network, test_loader, log_dict, adversary=adversary) 
@@ -340,7 +339,7 @@ def test_adv(args, network, test_loader, log_dict, debug=False, return_loss=Fals
     else:
         print("\n--------- Testing in global mode ---------")
 
-    if args.dataset.lower() == 'cifar10':
+    if args.dataset.lower() == 'cifar10' or args.dataset.lower() == 'cifar100':
         cifar_criterion = torch.nn.CrossEntropyLoss()
 
     if adversary is None:
@@ -362,7 +361,7 @@ def test_adv(args, network, test_loader, log_dict, debug=False, return_loss=Fals
         if debug:
             print("output is ", output)
 
-        if args.dataset.lower() == 'cifar10':
+        if args.dataset.lower() == 'cifar10' or args.dataset.lower() == 'cifar100':
             # mnist models return log_softmax outputs, while cifar ones return raw values!
             test_loss += cifar_criterion(output, target).item()
         elif args.dataset.lower() == 'mnist':
@@ -393,7 +392,7 @@ def test(args, network, test_loader, log_dict, debug=False, return_loss=False, i
     else:
         print("\n--------- Testing in global mode ---------")
 
-    if args.dataset.lower() == 'cifar10':
+    if args.dataset.lower() == 'cifar10' or args.dataset.lower() == 'cifar100':
         cifar_criterion = torch.nn.CrossEntropyLoss()
 
     #   with torch.no_grad():
@@ -406,7 +405,7 @@ def test(args, network, test_loader, log_dict, debug=False, return_loss=False, i
         if debug:
             print("output is ", output)
 
-        if args.dataset.lower() == 'cifar10':
+        if args.dataset.lower() == 'cifar10' or args.dataset.lower() == 'cifar100':
             # mnist models return log_softmax outputs, while cifar ones return raw values!
             test_loss += cifar_criterion(output, target).item()
         elif args.dataset.lower() == 'mnist':

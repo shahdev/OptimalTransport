@@ -5,14 +5,16 @@ import routines
 
 def get_avg_parameters(networks, weights=None):
     avg_pars = []
-    for par_group in zip(*[net.parameters() for net in networks]):
-        print([par.shape for par in par_group])
+    for par_group in zip(*[net.state_dict().items() for net in networks]):
         if weights is not None:
             weighted_par_group = [par * weights[i] for i, par in enumerate(par_group)]
             avg_par = torch.sum(torch.stack(weighted_par_group), dim=0)
         else:
             # print("shape of stacked params is ", torch.stack(par_group).shape) # (2, 400, 784)
-            avg_par = torch.mean(torch.stack(par_group), dim=0)
+            if 'num_batches_tracked' not in par_group[0][0]:
+                avg_par = torch.mean(torch.stack([x[1] for x in par_group]), dim=0)
+            else:
+                avg_par = par_group[0][1]
         print(avg_par.shape)
         avg_pars.append(avg_par)
     return avg_pars
@@ -34,7 +36,6 @@ def naive_ensembling(args, networks, test_loader):
     log_dict['test_losses'] = []
     # log_dict['test_counter'] = [i * len(train_loader.dataset) for i in range(args.n_epochs + 1)]
     routines.test(args, ensemble_network, test_loader, log_dict)
-
     # set the weights of the ensembled network
     for idx, (name, param) in enumerate(ensemble_network.state_dict().items()):
         ensemble_network.state_dict()[name].copy_(avg_pars[idx].data)
@@ -52,7 +53,7 @@ def prediction_ensembling(args, networks, test_loader):
     # test counter is not even used!
     # log_dict['test_counter'] = [i * len(train_loader.dataset) for i in range(args.n_epochs + 1)]
 
-    if args.dataset.lower() == 'cifar10':
+    if args.dataset.lower() == 'cifar10' or args.dataset.lower() == 'cifar100':
         cifar_criterion = torch.nn.CrossEntropyLoss()
 
     # set all the networks in eval mode
@@ -80,7 +81,7 @@ def prediction_ensembling(args, networks, test_loader):
         output = torch.sum(torch.stack(outputs), dim=0) # sum because multiplied by wts above
 
         #  check loss of this ensembled prediction
-        if args.dataset.lower() == 'cifar10':
+        if args.dataset.lower() == 'cifar10' or args.dataset.lower() == 'cifar100':
             # mnist models return log_softmax outputs, while cifar ones return raw values!
             test_loss += cifar_criterion(output, target).item()
         elif args.dataset.lower() == 'mnist':

@@ -156,7 +156,13 @@ if __name__ == '__main__':
         ut_local_array = []
         vt_local_array = []
         for idx in range(len(local_models)):
-            ut_local, vt_local = routines.compute_fisher_matrix(args, local_models[idx], train_loader_array[idx])
+            model_state_dict = models[idx].state_dict()
+            layer_idx = 0
+            for key, value in model_state_dict.items():
+                model_state_dict[key] = local_models[idx][layer_idx]
+                layer_idx += 1
+            models[idx].load_state_dict(model_state_dict)
+            ut_local, vt_local = routines.compute_fisher_matrix(args, models[idx], train_loader_array[idx])
             ut_local_array.append(ut_local)
             vt_local_array.append(vt_local)
 
