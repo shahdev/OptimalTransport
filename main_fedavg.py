@@ -52,8 +52,13 @@ if __name__ == '__main__':
     E_min = args.E_min
     for comm_round in range(args.num_comm_rounds):
         args.n_epochs = max(E_min, math.ceil(E0 * args.gamma ** int(comm_round / args.F)))
+        if args.n_epochs < 5:
+            lb_round = 0
+        else:
+            lb_round = lb * args.n_epochs/E0
+
         print("LOCAL TRAINING EPOCHS : ", args.n_epochs)
-        models, accuracies, adv_accuracies, (ut_local_array, vt_local_array) = routines.train_models(args, train_loader_array, test_loader, ut_local_array=ut_local_array, vt_local_array=vt_local_array, ut_global=ut_global, vt_global=vt_global, lb=lb, initial_model=initial_model)
+        models, accuracies, adv_accuracies, (ut_local_array, vt_local_array) = routines.train_models(args, train_loader_array, test_loader, ut_local_array=ut_local_array, vt_local_array=vt_local_array, ut_global=ut_global, vt_global=vt_global, lb=lb_round, initial_model=initial_model)
         
         ut_global = {}
         vt_global = {}

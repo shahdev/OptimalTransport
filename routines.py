@@ -81,7 +81,7 @@ def get_trained_model(args, id, random_seed, train_loader, test_loader, ut_local
     if network is None:
         network = get_model_from_name(args, idx=id)
         if args.model_name == 'vgg9':
-            checkpoint=torch.load('initialization.pth', map_location=torch.device(device))
+            checkpoint=torch.load('initialization_vgg_bias.pth', map_location=torch.device(device))
         elif args.model_name == 'nin':
             checkpoint = torch.load('initialization_nin_bias.pth', map_location=torch.device(device))
         elif args.model_name == 'vgg16':
@@ -135,8 +135,8 @@ def get_trained_model(args, id, random_seed, train_loader, test_loader, ut_local
         train(args, network, optimizer, cifar_criterion, train_loader, 
             ut_local, ut_global, vt_local, vt_global, lb,
             log_dict, epoch, model_id=str(id), adversary = adversary)
-        if epoch%10==0:
-            acc = test(args, network, test_loader, log_dict)
+        #if epoch%10==0:
+        #    acc = test(args, network, test_loader, log_dict)
     adv_acc = 0.0
     if args.adversarial_training != 0:
         adv_acc = test_adv(args, network, test_loader, log_dict, adversary=adversary) 

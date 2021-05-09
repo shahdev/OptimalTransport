@@ -116,6 +116,9 @@ def get_wassersteinized_layers_modularized(args, networks, activations=None, eps
             if idx < fuse_layer_start_idx:
                 t_fc0_model = fc_layer0_weight.data
                 layer_shape = fc_layer0_weight.shape
+                if bias:
+                    bias_t_fc0_model = bias_fc_layer0_weight 
+                    bias_layer_shape = bias_fc_layer0_weight.shape
             else:
                 layer_shape = fc_layer0_weight.shape
                 if bias:
@@ -268,7 +271,7 @@ def get_wassersteinized_layers_modularized(args, networks, activations=None, eps
             aligned_layers.append(t_fc0_model)
             layer_shapes.append(layer_shape) 
             if bias:
-                aligned_layers.append(bias_aligned_wt)
+                aligned_layers.append(bias_t_fc0_model)
                 layer_shapes.append(bias_layer_shape)
 
         aligned_models.append(aligned_layers)        
