@@ -67,13 +67,16 @@ def get_wassersteinized_layers_modularized(args, networks, activations=None, eps
     else:
         device = torch.device('cuda:{}'.format(args.gpu_id))
 
-    bias_layer == 'bias' in [x[0] for x in networks[0].parameters()]
-    if bias_layer:
+    for x in networks[0].named_parameters():
+        if 'bias' in x[0]:
+            bias = True
+            break
+    if bias:
         layer_step = 2        
     else:
         layer_step = 1
 
-    num_layers = len(list(networks[0].parameters()))/2
+    num_layers = int(len(list(networks[0].parameters()))/layer_step)
 
     num_models = len(networks)
 
@@ -92,15 +95,14 @@ def get_wassersteinized_layers_modularized(args, networks, activations=None, eps
 
         if args.eval_aligned:
             model0_aligned_layers = []
-
         # for idx, ((layer0_name, fc_layer0_weight), (layer1_name, fc_layer1_weight)) in \
         #         enumerate(zip(networks[k].named_parameters(), networks[base_model].named_parameters())):
         for idx in range(num_layers):
-            layer0_name, fc_layer0_weight = list(networks[k].named_parameters)[idx]
-            layer1_name, fc_layer1_weight = list(networks[base_model].named_parameters)[idx]
+            layer0_name, fc_layer0_weight = list(networks[k].named_parameters())[2*idx]
+            layer1_name, fc_layer1_weight = list(networks[base_model].named_parameters())[2*idx]
 
             if bias:
-                bias_layer0_name, bias_fc_layer0_weight = list(networks[k].named_parameters)[idx+1]
+                bias_layer0_name, bias_fc_layer0_weight = list(networks[k].named_parameters())[2*idx+1]
 
             assert fc_layer0_weight.shape == fc_layer1_weight.shape
             print("Previous layer shape is ", previous_layer_shape)
@@ -125,13 +127,16 @@ def get_wassersteinized_layers_modularized(args, networks, activations=None, eps
                     fc_layer0_weight_data = fc_layer0_weight.data.view(fc_layer0_weight.shape[0], fc_layer0_weight.shape[1], -1)
                     fc_layer1_weight_data = fc_layer1_weight.data.view(fc_layer1_weight.shape[0], fc_layer1_weight.shape[1], -1)
                     if bias:
-                        bias_fc_layer0_weight_data =  bias_fc_layer0_weight.data.view(fc_layer0_weight.shape[0], fc_layer0_weight.shape[1], -1)                        
+                        bias_fc_layer0_weight_data =  bias_fc_layer0_weight.data                        
                 else:
                     is_conv = False
                     fc_layer0_weight_data = fc_layer0_weight.data
                     fc_layer1_weight_data = fc_layer1_weight.data
                     if bias:
                         bias_fc_layer0_weight_data =  bias_fc_layer0_weight.data
+
+                if bias:
+                        bias_aligned_wt = bias_fc_layer0_weight_data
 
                 if idx == fuse_layer_start_idx:
                     if is_conv:
@@ -145,21 +150,15 @@ def get_wassersteinized_layers_modularized(args, networks, activations=None, eps
                         # M = cost_matrix(fc_layer0_weight, fc_layer1_weight)
 
                     aligned_wt = fc_layer0_weight_data
-                    if bias:
-                        bias_aligned_wt = bias_fc_layer0_weight_data
                 else:
 
                     print("shape of layer: model 0", fc_layer0_weight_data.shape)
                     print("shape of layer: model 1", fc_layer1_weight_data.shape)
                     print("shape of previous transport map", T_var.shape)
-
                     # aligned_wt = None, this caches the tensor and causes OOM
                     if is_conv:
                         T_var_conv = T_var.unsqueeze(0).repeat(fc_layer0_weight_data.shape[2], 1, 1)
                         aligned_wt = torch.bmm(fc_layer0_weight_data.permute(2, 0, 1), T_var_conv).permute(1, 2, 0)
-                        if bias:
-                            bias_aligned_wt = torch.bmm(bias_fc_layer0_weight_data.permute(2, 0, 1), T_var_conv).permute(1, 2, 0)
-
                         M = ground_metric_object.process(
                             aligned_wt.contiguous().view(aligned_wt.shape[0], -1),
                             fc_layer1_weight_data.view(fc_layer1_weight_data.shape[0], -1)
@@ -174,19 +173,9 @@ def get_wassersteinized_layers_modularized(args, networks, activations=None, eps
                             ).permute(1, 2, 0)
                             aligned_wt = aligned_wt.contiguous().view(aligned_wt.shape[0], -1)
 
-                            if bias:
-                                bias_fc_layer0_unflattened = bias_fc_layer0_weight.data.view(fc_layer0_weight.shape[0], T_var.shape[0], -1).permute(2, 0, 1)
-                                bias_aligned_wt = torch.bmm(
-                                    bias_fc_layer0_unflattened,
-                                    T_var.unsqueeze(0).repeat(bias_fc_layer0_unflattened.shape[0], 1, 1)
-                                ).permute(1, 2, 0)
-                                bias_aligned_wt = bias_aligned_wt.contiguous().view(bias_aligned_wt.shape[0], -1)
-
                         else:
                             # print("layer data (aligned) is ", aligned_wt, fc_layer1_weight_data)
                             aligned_wt = torch.matmul(fc_layer0_weight.data, T_var)
-                            if bias:
-                                bias_aligned_wt = torch.matmul(bias_fc_layer0_weight.data, T_var)
                         # M = cost_matrix(aligned_wt, fc_layer1_weight)
                         M = ground_metric_object.process(aligned_wt, fc_layer1_weight)
                         print("ground metric is ", M)
@@ -270,11 +259,11 @@ def get_wassersteinized_layers_modularized(args, networks, activations=None, eps
                     print("Shape of fc_layer0_weight_data is ", fc_layer0_weight_data.shape)
                     t_fc0_model = torch.matmul(T_var.t(), aligned_wt.contiguous().view(aligned_wt.shape[0], -1))
                     if bias:
-                        bias_t_fc0_model = torch.matmul(T_var.t(), bias_aligned_wt.contiguous().view(aligned_wt.shape[0], -1))
+                        bias_t_fc0_model = torch.matmul(T_var.t(), bias_aligned_wt)
                 else:
                     t_fc0_model = torch.matmul(T_var.t(), fc_layer0_weight_data.view(fc_layer0_weight_data.shape[0], -1))
                     if bias:
-                        bias_t_fc0_model = torch.matmul(T_var.t(), bias_fc_layer0_weight_data.view(fc_layer0_weight_data.shape[0], -1))
+                        bias_t_fc0_model = torch.matmul(T_var.t(), bias_aligned_wt)
 
             aligned_layers.append(t_fc0_model)
             layer_shapes.append(layer_shape) 
